@@ -27,19 +27,19 @@ import (
 	"time"
 
 	"github.com/cactus/go-statsd-client/statsd"
-	"github.com/percona/pmm/proto"
-	"github.com/percona/qan-api/app/agent"
-	"github.com/percona/qan-api/app/auth"
-	"github.com/percona/qan-api/app/controllers"
-	agentCtrl "github.com/percona/qan-api/app/controllers/agent"
-	"github.com/percona/qan-api/app/db"
-	"github.com/percona/qan-api/app/instance"
-	"github.com/percona/qan-api/app/query"
-	"github.com/percona/qan-api/app/shared"
-	"github.com/percona/qan-api/config"
-	queryService "github.com/percona/qan-api/service/query"
-	"github.com/percona/qan-api/stats"
 	"github.com/revel/revel"
+	"github.com/shatteredsilicon/qan-api/app/agent"
+	"github.com/shatteredsilicon/qan-api/app/auth"
+	"github.com/shatteredsilicon/qan-api/app/controllers"
+	agentCtrl "github.com/shatteredsilicon/qan-api/app/controllers/agent"
+	"github.com/shatteredsilicon/qan-api/app/db"
+	"github.com/shatteredsilicon/qan-api/app/instance"
+	"github.com/shatteredsilicon/qan-api/app/query"
+	"github.com/shatteredsilicon/qan-api/app/shared"
+	"github.com/shatteredsilicon/qan-api/config"
+	queryService "github.com/shatteredsilicon/qan-api/service/query"
+	"github.com/shatteredsilicon/qan-api/stats"
+	"github.com/shatteredsilicon/ssm/proto"
 )
 
 // AppVersion is set from linker flags set by revel/cmd:
@@ -47,9 +47,9 @@ import (
 // The value for this variable is taken from os environment variable `APP_VERSION`:
 //   https://github.com/revel/cmd/blob/97ec1422620f1a83cd13738708a109fe092364ca/harness/build.go#L212
 // The value of `APP_VERSION` environment variable is set during package build:
-//   https://github.com/percona/pmm-server-packaging/blob/611b8a2e372c9a399cedf2371157e78c3efa7bc8/rhel/SPECS/percona-qan-api.spec#L50
+//   https://github.com/shatteredsilicon/ssm-server-packaging/blob/611b8a2e372c9a399cedf2371157e78c3efa7bc8/rhel/SPECS/percona-qan-api.spec#L50
 // The variable is used to create `X-Percona-QAN-API-Version` header, and it's important for pmm-client:
-//   https://github.com/percona/pmm-client/blob/9420a44412f82d2e05f1e263492ca9a23345a55f/pmm/check_network.go#L43
+//   https://github.com/shatteredsilicon/ssm-client/blob/9420a44412f82d2e05f1e263492ca9a23345a55f/pmm/check_network.go#L43
 // Do not set this var.
 var AppVersion = ""
 
@@ -71,9 +71,9 @@ func init() {
 		for _, service := range []string{"", "route"} {
 			statsClient, err := statsd.NewBufferedClient(
 				config.Get("statsd.server"),
-				"", // prefix -- DO NOT SET HERE
+				"",                   // prefix -- DO NOT SET HERE
 				250*time.Millisecond, // buffer time
-				8932, // MTU for gigabit ethernet
+				8932,                 // MTU for gigabit ethernet
 			)
 			if err != nil {
 				panic(fmt.Sprintf("ERROR: statsd.NewBufferedClient: %s", err))

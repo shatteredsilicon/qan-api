@@ -25,12 +25,12 @@ import (
 	"sort"
 	"time"
 
-	"github.com/percona/pmm/proto"
-	"github.com/percona/qan-api/app/db"
-	"github.com/percona/qan-api/app/db/mysql"
-	"github.com/percona/qan-api/app/shared"
-	"github.com/percona/qan-api/app/ws"
-	"github.com/percona/qan-api/stats"
+	"github.com/shatteredsilicon/qan-api/app/db"
+	"github.com/shatteredsilicon/qan-api/app/db/mysql"
+	"github.com/shatteredsilicon/qan-api/app/shared"
+	"github.com/shatteredsilicon/qan-api/app/ws"
+	"github.com/shatteredsilicon/qan-api/stats"
+	"github.com/shatteredsilicon/ssm/proto"
 )
 
 const (

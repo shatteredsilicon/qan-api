@@ -6,7 +6,7 @@ import (
 	_ "github.com/go-sql-driver/mysql" // do we need this here?
 	"github.com/jmoiron/sqlx"
 
-	"github.com/percona/qan-api/config"
+	"github.com/shatteredsilicon/qan-api/config"
 )
 
 var db *sqlx.DB

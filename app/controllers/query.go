@@ -22,13 +22,13 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	queryProto "github.com/percona/pmm/proto/query"
-	"github.com/percona/qan-api/app/db"
-	"github.com/percona/qan-api/app/instance"
-	"github.com/percona/qan-api/app/query"
-	"github.com/percona/qan-api/app/shared"
-	"github.com/percona/qan-api/stats"
 	"github.com/revel/revel"
+	"github.com/shatteredsilicon/qan-api/app/db"
+	"github.com/shatteredsilicon/qan-api/app/instance"
+	"github.com/shatteredsilicon/qan-api/app/query"
+	"github.com/shatteredsilicon/qan-api/app/shared"
+	"github.com/shatteredsilicon/qan-api/stats"
+	queryProto "github.com/shatteredsilicon/ssm/proto/query"
 )
 
 type Query struct {

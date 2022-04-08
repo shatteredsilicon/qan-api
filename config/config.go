@@ -102,7 +102,7 @@ func getConfPaths() (confPaths []string) {
 	// but please remember that both variables can store multiple paths
 	goPaths := filepath.SplitList(os.Getenv("GOPATH"))
 	for _, goPath := range goPaths {
-		confPaths = append(confPaths, path.Join(goPath, "/src/github.com/percona/qan-api/conf"))
+		confPaths = append(confPaths, path.Join(goPath, "/src/github.com/shatteredsilicon/qan-api/conf"))
 	}
 	return confPaths
 }

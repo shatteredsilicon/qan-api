@@ -95,8 +95,8 @@
   revision = "8863d30f944bc83d6d7b1d5c4b3cfa2d69d84cf3"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/percona/pmm"
+  branch = "1.x"
+  name = "github.com/shatteredsilicon/ssm"
   packages = [
     "proto",
     "proto/config",

@@ -18,8 +18,8 @@
 package controllers
 
 import (
-	"github.com/percona/pmm/proto"
 	"github.com/revel/revel"
+	"github.com/shatteredsilicon/ssm/proto"
 )
 
 type Home struct {

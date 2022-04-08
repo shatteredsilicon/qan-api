@@ -25,7 +25,7 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/percona/pmm/proto"
+	"github.com/shatteredsilicon/ssm/proto"
 )
 
 func WaitRecv(recvChan chan []byte, v interface{}) error {

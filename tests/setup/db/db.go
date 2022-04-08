@@ -30,7 +30,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/percona/qan-api/app/shared"
+	"github.com/shatteredsilicon/qan-api/app/shared"
 )
 
 type Db struct {
@@ -41,7 +41,7 @@ type Db struct {
 
 func NewDb(dsn string, schemaDir, testDir string) *Db {
 	files := []string{
-		filepath.Join(schemaDir, "pmm.sql"),
+		filepath.Join(schemaDir, "ssm.sql"),
 		filepath.Join(testDir, "schema/basic.sql"),
 	}
 	return newDb(dsn, files)

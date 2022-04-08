@@ -18,8 +18,8 @@
 package ws_test
 
 import (
-	"github.com/percona/qan-api/app/ws"
-	"github.com/percona/qan-api/test/mock"
+	"github.com/shatteredsilicon/qan-api/app/ws"
+	"github.com/shatteredsilicon/qan-api/test/mock"
 	. "gopkg.in/check.v1"
 )
 

@@ -21,12 +21,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/percona/pmm/proto"
-	"github.com/percona/qan-api/app/db"
-	appInstance "github.com/percona/qan-api/app/instance"
-	"github.com/percona/qan-api/app/shared"
-	"github.com/percona/qan-api/config"
-	testDb "github.com/percona/qan-api/tests/setup/db"
+	"github.com/shatteredsilicon/qan-api/app/db"
+	appInstance "github.com/shatteredsilicon/qan-api/app/instance"
+	"github.com/shatteredsilicon/qan-api/app/shared"
+	"github.com/shatteredsilicon/qan-api/config"
+	testDb "github.com/shatteredsilicon/qan-api/tests/setup/db"
+	"github.com/shatteredsilicon/ssm/proto"
 	"github.com/stretchr/testify/assert"
 	. "gopkg.in/check.v1"
 )

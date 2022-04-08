@@ -22,9 +22,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/percona/pmm/proto"
-	"github.com/percona/qan-api/app/shared"
-	"github.com/percona/qan-api/app/ws"
+	"github.com/shatteredsilicon/qan-api/app/shared"
+	"github.com/shatteredsilicon/qan-api/app/ws"
+	"github.com/shatteredsilicon/ssm/proto"
 )
 
 // A LocalAgent is a Communicator for an agent connected to this API. It uses a

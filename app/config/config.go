@@ -19,9 +19,9 @@ package config
 
 import (
 	_ "github.com/go-sql-driver/mysql"
-	pc "github.com/percona/pmm/proto/config"
-	"github.com/percona/qan-api/app/db"
-	"github.com/percona/qan-api/stats"
+	"github.com/shatteredsilicon/qan-api/app/db"
+	"github.com/shatteredsilicon/qan-api/stats"
+	pc "github.com/shatteredsilicon/ssm/proto/config"
 )
 
 type MySQLHandler struct {

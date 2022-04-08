@@ -20,7 +20,7 @@ package factory
 import (
 	"golang.org/x/net/websocket"
 
-	"github.com/percona/qan-api/app/ws"
+	"github.com/shatteredsilicon/qan-api/app/ws"
 )
 
 type ConnectorFactory struct {

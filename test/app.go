@@ -26,7 +26,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/percona/pmm/proto"
+	"github.com/shatteredsilicon/ssm/proto"
 )
 
 var RootDir string

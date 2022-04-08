@@ -30,15 +30,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/percona/pmm/proto"
-	"github.com/percona/qan-api/app/agent"
-	"github.com/percona/qan-api/app/db"
-	"github.com/percona/qan-api/app/shared"
-	"github.com/percona/qan-api/stats"
 	"github.com/pkg/errors"
 	"github.com/revel/revel"
+	"github.com/shatteredsilicon/qan-api/app/agent"
+	"github.com/shatteredsilicon/qan-api/app/db"
+	"github.com/shatteredsilicon/qan-api/app/shared"
+	"github.com/shatteredsilicon/qan-api/stats"
+	"github.com/shatteredsilicon/ssm/proto"
 
-	"github.com/percona/qan-api/config"
+	"github.com/shatteredsilicon/qan-api/config"
 )
 
 // This is the path where we store zip files from the CollectInfo method from the agent.

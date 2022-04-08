@@ -35,8 +35,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/percona/pmm/proto"
-	"github.com/percona/qan-api/test/mock"
+	"github.com/shatteredsilicon/qan-api/test/mock"
+	"github.com/shatteredsilicon/ssm/proto"
 	"golang.org/x/net/websocket"
 )
 
@@ -70,7 +70,7 @@ func NewApi(host string, port string) *Api {
 
 func (a *Api) Start() (err error) {
 	hostname := a.host + ":" + a.port
-	a.api = exec.Command("revel", "run", "github.com/percona/qan-api", "test", a.port)
+	a.api = exec.Command("revel", "run", "github.com/shatteredsilicon/qan-api", "test", a.port)
 	a.api.Env = os.Environ()
 	a.api.Env = append(a.api.Env, "CLOUD_API_HOSTNAME="+hostname)
 	stdout, err := a.api.StdoutPipe()

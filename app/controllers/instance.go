@@ -22,12 +22,12 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/nu7hatch/gouuid"
-	"github.com/percona/pmm/proto"
-	"github.com/percona/qan-api/app/db"
-	"github.com/percona/qan-api/app/instance"
-	"github.com/percona/qan-api/app/shared"
+	uuid "github.com/nu7hatch/gouuid"
 	"github.com/revel/revel"
+	"github.com/shatteredsilicon/qan-api/app/db"
+	"github.com/shatteredsilicon/qan-api/app/instance"
+	"github.com/shatteredsilicon/qan-api/app/shared"
+	"github.com/shatteredsilicon/ssm/proto"
 )
 
 type Instance struct {

@@ -20,8 +20,8 @@ package auth
 import (
 	_ "github.com/go-sql-driver/mysql"
 
-	"github.com/percona/qan-api/app/db"
-	"github.com/percona/qan-api/app/db/mysql"
+	"github.com/shatteredsilicon/qan-api/app/db"
+	"github.com/shatteredsilicon/qan-api/app/db/mysql"
 )
 
 type MySQLHandler struct {

@@ -22,13 +22,13 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/percona/pmm/proto"
-	"github.com/percona/qan-api/app/agent"
-	"github.com/percona/qan-api/app/controllers"
-	"github.com/percona/qan-api/app/db"
-	"github.com/percona/qan-api/app/instance"
-	"github.com/percona/qan-api/app/shared"
 	"github.com/revel/revel"
+	"github.com/shatteredsilicon/qan-api/app/agent"
+	"github.com/shatteredsilicon/qan-api/app/controllers"
+	"github.com/shatteredsilicon/qan-api/app/db"
+	"github.com/shatteredsilicon/qan-api/app/instance"
+	"github.com/shatteredsilicon/qan-api/app/shared"
+	"github.com/shatteredsilicon/ssm/proto"
 )
 
 type Agent struct {

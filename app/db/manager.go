@@ -20,7 +20,7 @@ package db
 import (
 	"database/sql"
 
-	"github.com/percona/qan-api/app/db/mysql"
+	"github.com/shatteredsilicon/qan-api/app/db/mysql"
 )
 
 var DBManager *mysql.Manager
