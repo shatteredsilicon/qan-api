@@ -2,166 +2,247 @@
 
 
 [[projects]]
+  digest = "1:eb72a80db0a34a016c9a7876d0424fd19d17dfa02c449f6650ba45f6a85e7e1e"
   name = "github.com/agtorre/gocolorize"
   packages = ["."]
+  pruneopts = "T"
   revision = "f42b554bf7f006936130c9bb4f971afd2d87f671"
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:eae0d94da35c5803bfb4b719151f1a94d41c0301fd796301601d76befdd0ebbf"
+  name = "github.com/bradfitz/gomemcache"
+  packages = ["memcache"]
+  pruneopts = "T"
+  revision = "fb4bf637b56d66a1925c1bb0780b27dd714ec380"
+
+[[projects]]
+  digest = "1:27eae393b09e5be149807a91a5d5a316db90172e63a847fc9c311d5ac52cac87"
   name = "github.com/cactus/go-statsd-client"
   packages = ["statsd"]
+  pruneopts = "T"
   revision = "138b925ccdf617776955904ba7759fce64406cec"
   version = "v3.1.1"
 
 [[projects]]
+  digest = "1:9f42202ac457c462ad8bb9642806d275af9ab4850cf0b1960b9c6f083d4a309a"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
-  revision = "346938d642f2ec3594ed81d874461961cd0faa76"
-  version = "v1.1.0"
+  pruneopts = "T"
+  revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
+  version = "v1.1.1"
 
 [[projects]]
+  digest = "1:e267cd0e36257315a403e00ac6e74828e3596d6ea3010708b3f7b2eb2fc75f1f"
+  name = "github.com/garyburd/redigo"
+  packages = [
+    "internal",
+    "redis",
+  ]
+  pruneopts = "T"
+  revision = "5dd9313ac9b7fa7d5f3114d1c146ae09897efd8e"
+  version = "v1.6.3"
+
+[[projects]]
+  digest = "1:a51f83b872149289260897102f7364bc412f19c119295252d3d0bda439b23d98"
   name = "github.com/go-sql-driver/mysql"
   packages = ["."]
-  revision = "d523deb1b23d913de5bdada721a6071e71283618"
-  version = "v1.4.0"
+  pruneopts = "T"
+  revision = "bcc459a906419e2890a50fc2c99ea6dd927a88f2"
+  version = "v1.6.0"
 
 [[projects]]
-  branch = "master"
+  digest = "1:9c50fb7eaa4cd7acde77ad217dc0338d57821b8ba548d1e8c214f3c0fef114b4"
   name = "github.com/golang/glog"
   packages = ["."]
-  revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
+  pruneopts = "T"
+  revision = "9ef845f417d839250ceabbc25c1b26101e772dd7"
+  version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
+  digest = "1:c3c1f4c4e2b60cc2a578a2007fa172e02011367acf8c9b5be55c99de6095184b"
   name = "github.com/golang/protobuf"
   packages = [
     "proto",
     "ptypes",
     "ptypes/any",
     "ptypes/duration",
-    "ptypes/timestamp"
+    "ptypes/timestamp",
   ]
-  revision = "925541529c1fa6821df4e44ce2723319eb2be768"
+  pruneopts = "T"
+  revision = "ae97035608a719c7a1c1c41bed0ae0744bdb0c6f"
+  version = "v1.5.2"
 
 [[projects]]
-  branch = "master"
+  digest = "1:982daadae46474ed75710eb441cf0faa095344a9bed767aff469e7ee2c18c3d0"
   name = "github.com/hashicorp/go-version"
   packages = ["."]
-  revision = "4fe82ae3040f80a03d04d2cccb5606a626b8e1ee"
+  pruneopts = "T"
+  revision = "1a9a0e4efa8f54a601354a97d3fffbc65b2355f5"
+  version = "v1.5.0"
 
 [[projects]]
-  branch = "master"
+  digest = "1:f05e668961521e0f0b0be37241a4e9ea0a8f0c44aed3006dc2195bbc3bb95f97"
   name = "github.com/jmoiron/sqlx"
   packages = [
     ".",
-    "reflectx"
+    "reflectx",
   ]
-  revision = "05cef0741ade10ca668982355b3f3f0bcf0ff0a8"
+  pruneopts = "T"
+  revision = "28212d434cdd87418ecd0cb81173690ce7ac6ab6"
+  version = "v1.3.5"
 
 [[projects]]
+  digest = "1:358d65f79caed2b675a3917f8bc595e5afed777772b319ade079c768c4f84df9"
   name = "github.com/klauspost/compress"
   packages = [
     "flate",
     "gzip",
-    "zlib"
+    "zlib",
   ]
-  revision = "6c8db69c4b49dd4df1fff66996cf556176d0b9bf"
-  version = "v1.2.1"
+  pruneopts = "T"
+  revision = "d507a956c12080b811adf71454d2173912efdc91"
+  version = "v1.15.4"
 
 [[projects]]
-  name = "github.com/klauspost/cpuid"
+  digest = "1:82bd1b6974c139407af6ad5a7acbde56cce7c411a5de95e217cb2ce121f9924a"
+  name = "github.com/kr/pretty"
   packages = ["."]
-  revision = "ae7887de9fa5d2db4eaa8174a7eff2c1ac00f2da"
-  version = "v1.1"
+  pruneopts = "T"
+  revision = "a883a8422cd235c67c6c4fdcb7bbb022143e10b1"
+  version = "v0.3.0"
 
 [[projects]]
-  name = "github.com/klauspost/crc32"
+  digest = "1:c563c23ecb602044e88f8aeb97bd84feda71296b31de629c2beb7d8233c8794d"
+  name = "github.com/kr/text"
   packages = ["."]
-  revision = "cb6bfca970f6908083f26f39a79009d608efd5cd"
-  version = "v1.1"
+  pruneopts = "T"
+  revision = "702c74938df48b97370179f33ce2107bd7ff3b3e"
+  version = "v0.2.0"
 
 [[projects]]
   branch = "master"
+  digest = "1:0e1e5f960c58fdc677212fcc70e55042a0084d367623e51afbdb568963832f5d"
   name = "github.com/nu7hatch/gouuid"
   packages = ["."]
+  pruneopts = "T"
   revision = "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
 
 [[projects]]
+  digest = "1:2a7a869b4c8540375a4f99d8c73a973abec2b6ab766dc14483e98990f2d62126"
   name = "github.com/percona/go-mysql"
   packages = [
     "event",
-    "log"
+    "log",
   ]
+  pruneopts = "T"
   revision = "8863d30f944bc83d6d7b1d5c4b3cfa2d69d84cf3"
 
 [[projects]]
+  digest = "1:cf31692c14422fa27c83a05292eb5cbe0fb2775972e8f1f8446a71549bd8980b"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
+  version = "v0.8.1"
+
+[[projects]]
+  digest = "1:22aa691fe0213cb5c07d103f9effebcb7ad04bee45a0ce5fe5369d0ca2ec3a1f"
+  name = "github.com/pmezard/go-difflib"
+  packages = ["difflib"]
+  pruneopts = "T"
+  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
+  version = "v1.0.0"
+
+[[projects]]
+  digest = "1:5b55e8c4385bbbddcb79a2188391c9156f03b410d0d8e116ce29ef89babcd525"
+  name = "github.com/revel/cmd"
+  packages = [
+    "harness",
+    "revel",
+  ]
+  pruneopts = "T"
+  revision = "451d480f447d3d2c1d26f7207ac321cd26bff28f"
+  source = "github.com/percona-lab/revel-cmd"
+  version = "v0.14.2"
+
+[[projects]]
+  digest = "1:44abf07d5be18dc7ce9299b74ec68bb18f5bcb75e72f7e81750b6f103969521d"
+  name = "github.com/revel/config"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "662332b741dd464a886ab0901379c02b9bc5dc30"
+  version = "v0.14.0"
+
+[[projects]]
+  digest = "1:f5c752ef50f35fb248158a39cd678d81ee5f7a91b0e0bc70a5cbfa2f6bb978e0"
+  name = "github.com/revel/modules"
+  packages = ["testrunner/app/controllers"]
+  pruneopts = "T"
+  revision = "209cc8b2b7ed93a55067bc0db97707b1432e49c4"
+  version = "v0.14.0"
+
+[[projects]]
+  digest = "1:9aba1f31828b00aac25bf9ca3a609fd6981bbfc7b79305cd24fb6c62847652a4"
+  name = "github.com/revel/revel"
+  packages = [
+    ".",
+    "cache",
+    "testing",
+  ]
+  pruneopts = "T"
+  revision = "75d66c3c990f01deb5ff2045c04da7eea5be39b2"
+  version = "v0.14.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:b32828cd6652ccea275d3ac6617b42f258eff3557068dcadb5cfdedfc6ce228e"
+  name = "github.com/robfig/go-cache"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "9fc39e0dbf62c034ec4e45e6120fc69433a3ec51"
+
+[[projects]]
+  branch = "master"
+  digest = "1:a0812e773563f2e41afebf582088a86b0f01eb5bd794c19ecc1bce25820b1fa2"
+  name = "github.com/robfig/pathtree"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "41257a1839e945fce74afd070e02bab2ea2c776a"
+
+[[projects]]
+  digest = "1:4962827859ddcf215687664f115db56b7e914fc3fe52200e8cbcfe6bee823028"
+  name = "github.com/rogpeppe/go-internal"
+  packages = ["fmtsort"]
+  pruneopts = "T"
+  revision = "115ce09fd6b421993aafa8cdae0171429e9bd2c4"
+  version = "v1.8.1"
+
+[[projects]]
   branch = "1.x"
+  digest = "1:9b3e5d8ef50d439b1932f59dcc05378178a93203534e7ecd63c4f8e6d5773e45"
   name = "github.com/shatteredsilicon/ssm"
   packages = [
     "proto",
     "proto/config",
     "proto/metrics",
     "proto/qan",
-    "proto/query"
+    "proto/query",
   ]
-  revision = "99e800552681871f9956a84bf5465a6d19455597"
+  pruneopts = "T"
+  revision = "7e70b7911b75f768bb9521c5064145a8c2279637"
 
 [[projects]]
-  name = "github.com/pkg/errors"
-  packages = ["."]
-  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
-  version = "v0.8.0"
-
-[[projects]]
-  name = "github.com/pmezard/go-difflib"
-  packages = ["difflib"]
-  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
-  version = "v1.0.0"
-
-[[projects]]
-  name = "github.com/revel/cmd"
-  packages = [
-    "harness",
-    "revel"
-  ]
-  revision = "451d480f447d3d2c1d26f7207ac321cd26bff28f"
-  source = "github.com/percona-lab/revel-cmd"
-  version = "v0.14.2"
-
-[[projects]]
-  name = "github.com/revel/config"
-  packages = ["."]
-  revision = "662332b741dd464a886ab0901379c02b9bc5dc30"
-  version = "v0.18.0"
-
-[[projects]]
-  name = "github.com/revel/modules"
-  packages = ["testrunner/app/controllers"]
-  revision = "209cc8b2b7ed93a55067bc0db97707b1432e49c4"
-  version = "v0.15.0"
-
-[[projects]]
-  name = "github.com/revel/revel"
-  packages = [
-    ".",
-    "testing"
-  ]
-  revision = "75d66c3c990f01deb5ff2045c04da7eea5be39b2"
-  version = "v0.14.0"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/robfig/pathtree"
-  packages = ["."]
-  revision = "41257a1839e945fce74afd070e02bab2ea2c776a"
-
-[[projects]]
+  digest = "1:d9e7cb966884b70c561c8f84c3532b27eaff4229f3fad504323ef358d3802b84"
   name = "github.com/stretchr/testify"
   packages = ["assert"]
-  revision = "b91bfb9ebec76498946beb6af7c0230c7cc7ba6c"
-  version = "v1.2.0"
+  pruneopts = "T"
+  revision = "083ff1c0449867d0d8d456483ee5fab8e0c0e1e6"
+  version = "v1.7.1"
 
 [[projects]]
+  digest = "1:e89e840102d280a8a0c4783efdc2d59388e636ca01ef58e489d3a0aa55737e5a"
   name = "github.com/youtube/vitess"
   packages = [
     "go/bytes2",
@@ -172,62 +253,142 @@
     "go/vt/proto/vtgate",
     "go/vt/proto/vtrpc",
     "go/vt/sqlparser",
-    "go/vt/vterrors"
+    "go/vt/vterrors",
   ]
+  pruneopts = "T"
   revision = "98f9189aa016e2a3afafa9ff42cde55bde421d3c"
 
 [[projects]]
   branch = "master"
+  digest = "1:2ae94db04accc55af2486009d95e477d6b37ae8434800241a62801e321f8c9b2"
   name = "golang.org/x/net"
   packages = [
     "context",
-    "websocket"
+    "websocket",
   ]
-  revision = "0ed95abb35c445290478a5348a7b38bb154135fd"
+  pruneopts = "T"
+  revision = "2e3eb7b945c2d9c792af7388e297d53078fd9e76"
 
 [[projects]]
   branch = "master"
+  digest = "1:91b90056a03492d151313c7561c8d40432cd5ccab105f4b70b960ac7a787e1b4"
   name = "golang.org/x/sys"
-  packages = ["unix"]
-  revision = "ff2a66f350cefa5c93a634eadb5d25bb60c85a9c"
+  packages = [
+    "internal/unsafeheader",
+    "unix",
+  ]
+  pruneopts = "T"
+  revision = "bc2c85ada10aa9b6aa9607e9ac9ad0761b95cf1d"
 
 [[projects]]
-  name = "google.golang.org/appengine"
-  packages = ["cloudsql"]
-  revision = "150dc57a1b433e64154302bdc40b6bb8aefa313a"
-  version = "v1.0.0"
-
-[[projects]]
-  branch = "master"
+  branch = "main"
+  digest = "1:bd57f8a7e2c4faa258b9d02e9bbda0d2bb52c6022526bfc98bc69a3545528492"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
-  revision = "4eb30f4778eed4c258ba66527a0d4f9ec8a36c45"
+  pruneopts = "T"
+  revision = "3a47de7e79bd43c55488c1164c9ea58b8d032d91"
 
 [[projects]]
+  digest = "1:a05d9ffc6004fe8de072d4697cf98e389db13da71c034580327ec19c4de9d36d"
   name = "google.golang.org/grpc"
   packages = [
     "codes",
-    "status"
+    "internal/status",
+    "status",
   ]
-  revision = "6b51017f791ae1cfbec89c52efdf444b13b550ef"
-  version = "v1.9.2"
+  pruneopts = "T"
+  revision = "46da11bc8bf12ea2b86d0783cd92e098ba0ccc99"
+  version = "v1.46.2"
+
+[[projects]]
+  digest = "1:22a6472323cac7853d2c21f358f465f5f66a1a1676f3cdcfe92ae35559a7ecf7"
+  name = "google.golang.org/protobuf"
+  packages = [
+    "encoding/prototext",
+    "encoding/protowire",
+    "internal/descfmt",
+    "internal/descopts",
+    "internal/detrand",
+    "internal/encoding/defval",
+    "internal/encoding/messageset",
+    "internal/encoding/tag",
+    "internal/encoding/text",
+    "internal/errors",
+    "internal/filedesc",
+    "internal/filetype",
+    "internal/flags",
+    "internal/genid",
+    "internal/impl",
+    "internal/order",
+    "internal/pragma",
+    "internal/set",
+    "internal/strs",
+    "internal/version",
+    "proto",
+    "reflect/protodesc",
+    "reflect/protoreflect",
+    "reflect/protoregistry",
+    "runtime/protoiface",
+    "runtime/protoimpl",
+    "types/descriptorpb",
+    "types/known/anypb",
+    "types/known/durationpb",
+    "types/known/timestamppb",
+  ]
+  pruneopts = "T"
+  revision = "32051b4f86e54c2142c7c05362c6e96ae3454a1c"
+  version = "v1.28.0"
 
 [[projects]]
   branch = "v1"
+  digest = "1:02517ac61210eb0565b4b620ec97bfa46576fe4c202a47c920e3b459d6d160b8"
   name = "gopkg.in/check.v1"
   packages = ["."]
-  revision = "20d25e2804050c1cd24a7eea1e7a6447dd0e74ec"
+  pruneopts = "T"
+  revision = "10cb98267c6cb43ea9cd6793f29ff4089c306974"
 
 [[projects]]
+  digest = "1:b7caa7fed2bb2b2fe431010bb22aa3d9d1bc0c54f31bed833305023e0851288b"
   name = "gopkg.in/fsnotify.v1"
   packages = ["."]
-  revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
+  pruneopts = "T"
+  revision = "0f4b979323bea7ee6677faa4a88078ec558b1b80"
   source = "github.com/fsnotify/fsnotify"
-  version = "v1.4.7"
+  version = "v1.5.4"
+
+[[projects]]
+  digest = "1:1d50ad23bfdbc4da727a5c95bea4fa49741d4d88b066958879e5bf7d766ca157"
+  name = "gopkg.in/yaml.v3"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "00bbc0947ae889b9e480044dbc3bc3e3216a6a89"
+  version = "v3.0.0"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d86a8e8818c1e63b91f04855314a9db824ac9718e64c0083c1e8052f4df0eacb"
+  input-imports = [
+    "github.com/cactus/go-statsd-client/statsd",
+    "github.com/go-sql-driver/mysql",
+    "github.com/hashicorp/go-version",
+    "github.com/jmoiron/sqlx",
+    "github.com/nu7hatch/gouuid",
+    "github.com/percona/go-mysql/event",
+    "github.com/pkg/errors",
+    "github.com/revel/cmd/revel",
+    "github.com/revel/config",
+    "github.com/revel/revel",
+    "github.com/revel/revel/cache",
+    "github.com/revel/revel/testing",
+    "github.com/shatteredsilicon/ssm/proto",
+    "github.com/shatteredsilicon/ssm/proto/config",
+    "github.com/shatteredsilicon/ssm/proto/metrics",
+    "github.com/shatteredsilicon/ssm/proto/qan",
+    "github.com/shatteredsilicon/ssm/proto/query",
+    "github.com/stretchr/testify/assert",
+    "github.com/youtube/vitess/go/vt/sqlparser",
+    "golang.org/x/net/websocket",
+    "gopkg.in/check.v1",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1
