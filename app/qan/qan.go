@@ -18,7 +18,7 @@
 package qan
 
 import (
-	"github.com/percona/pmm/proto/qan"
+	"github.com/shatteredsilicon/ssm/proto/qan"
 )
 
 type MetricWriter interface {

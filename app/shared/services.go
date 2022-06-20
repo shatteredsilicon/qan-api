@@ -21,9 +21,9 @@ import (
 	"time"
 
 	"github.com/cactus/go-statsd-client/statsd"
-	"github.com/percona/pmm/proto"
-	"github.com/percona/qan-api/service/query"
-	"github.com/percona/qan-api/stats"
+	"github.com/shatteredsilicon/qan-api/service/query"
+	"github.com/shatteredsilicon/qan-api/stats"
+	"github.com/shatteredsilicon/ssm/proto"
 )
 
 var AgentDirectory AgentFinder

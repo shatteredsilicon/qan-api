@@ -23,7 +23,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/percona/qan-api/app/db/mysql"
+	"github.com/shatteredsilicon/qan-api/app/db/mysql"
 )
 
 // report provide methods to works with query report

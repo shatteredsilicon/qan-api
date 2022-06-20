@@ -22,7 +22,7 @@ import (
 	"fmt"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/percona/qan-api/app/shared"
+	"github.com/shatteredsilicon/qan-api/app/shared"
 )
 
 // Map MySQL error to shared app error and return, if any, because db handler

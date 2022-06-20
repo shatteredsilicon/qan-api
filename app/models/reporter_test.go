@@ -19,22 +19,22 @@ package models_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"time"
-	"fmt"
 
-	"github.com/percona/qan-api/app/models"
-	"github.com/percona/qan-api/config"
-	"github.com/percona/qan-api/test"
-	testDb "github.com/percona/qan-api/tests/setup/db"
+	"github.com/shatteredsilicon/qan-api/app/models"
+	"github.com/shatteredsilicon/qan-api/config"
+	"github.com/shatteredsilicon/qan-api/test"
+	testDb "github.com/shatteredsilicon/qan-api/tests/setup/db"
 	"github.com/stretchr/testify/assert"
 	. "gopkg.in/check.v1"
 )
 
 type ReporterTestSuite struct {
-	testDb    *testDb.Db
-	mysqlId   uint
+	testDb  *testDb.Db
+	mysqlId uint
 }
 
 var _ = Suite(&ReporterTestSuite{})

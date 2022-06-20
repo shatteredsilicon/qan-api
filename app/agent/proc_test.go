@@ -23,10 +23,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/percona/pmm/proto"
-	pc "github.com/percona/pmm/proto/config"
-	"github.com/percona/qan-api/app/agent"
-	mock "github.com/percona/qan-api/test/mock/closure"
+	"github.com/shatteredsilicon/qan-api/app/agent"
+	mock "github.com/shatteredsilicon/qan-api/test/mock/closure"
+	"github.com/shatteredsilicon/ssm/proto"
+	pc "github.com/shatteredsilicon/ssm/proto/config"
 	"github.com/stretchr/testify/assert"
 	. "gopkg.in/check.v1"
 )

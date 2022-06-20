@@ -24,10 +24,10 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/percona/pmm/proto/metrics"
-	"github.com/percona/qan-api/app/db"
-	"github.com/percona/qan-api/app/db/mysql"
-	"github.com/percona/qan-api/stats"
+	"github.com/shatteredsilicon/qan-api/app/db"
+	"github.com/shatteredsilicon/qan-api/app/db/mysql"
+	"github.com/shatteredsilicon/qan-api/stats"
+	"github.com/shatteredsilicon/ssm/proto/metrics"
 )
 
 var basicMetrics []string      // four universal metrics

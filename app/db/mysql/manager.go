@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/percona/qan-api/config"
+	"github.com/shatteredsilicon/qan-api/config"
 )
 
 type Manager struct {

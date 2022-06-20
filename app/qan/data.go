@@ -24,11 +24,11 @@ import (
 	"log"
 	"time"
 
-	"github.com/percona/pmm/proto"
-	qp "github.com/percona/pmm/proto/qan"
-	"github.com/percona/qan-api/app/shared"
-	"github.com/percona/qan-api/app/ws"
-	"github.com/percona/qan-api/stats"
+	"github.com/shatteredsilicon/qan-api/app/shared"
+	"github.com/shatteredsilicon/qan-api/app/ws"
+	"github.com/shatteredsilicon/qan-api/stats"
+	"github.com/shatteredsilicon/ssm/proto"
+	qp "github.com/shatteredsilicon/ssm/proto/qan"
 )
 
 const (

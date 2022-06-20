@@ -1,7 +1,7 @@
 # Percona Query Analytics API
 
 [![Travis CI Build Status](https://travis-ci.org/percona/qan-api.svg?branch=master)](https://travis-ci.org/percona/qan-api)
-[![GoDoc](https://godoc.org/github.com/percona/qan-api?status.svg)](https://godoc.org/github.com/percona/qan-api)
+[![GoDoc](https://godoc.org/github.com/shatteredsilicon/qan-api?status.svg)](https://godoc.org/github.com/shatteredsilicon/qan-api)
 [![Report Card](http://goreportcard.com/badge/percona/qan-api)](http://goreportcard.com/report/percona/qan-api)
 [![CLA assistant](https://cla-assistant.percona.com/readme/badge/percona/qan-api)](https://cla-assistant.percona.com/percona/qan-api)
 
@@ -13,10 +13,10 @@ See the [PMM docs](https://www.percona.com/doc/percona-monitoring-and-management
 In the empty dir run:
 ```
 export GOPATH=$(pwd)
-git clone http://github.com/percona/qan-api ./src/github.com/percona/qan-api
-go build -o ./revel ./src/github.com/percona/qan-api/vendor/github.com/revel/cmd/revel
-ln -s $(pwd)/src/github.com/percona/qan-api/vendor/github.com/revel src/github.com/revel
-./revel build github.com/percona/qan-api <destination dir> prod
+git clone http://github.com/shatteredsilicon/qan-api ./src/github.com/shatteredsilicon/qan-api
+go build -o ./revel ./src/github.com/shatteredsilicon/qan-api/vendor/github.com/revel/cmd/revel
+ln -s $(pwd)/src/github.com/shatteredsilicon/qan-api/vendor/github.com/revel src/github.com/revel
+./revel build github.com/shatteredsilicon/qan-api <destination dir> prod
 ```
 ## Submitting Bug Reports
 

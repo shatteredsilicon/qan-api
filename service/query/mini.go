@@ -26,7 +26,7 @@ import (
 	"os/exec"
 	"strings"
 
-	queryProto "github.com/percona/pmm/proto/query"
+	queryProto "github.com/shatteredsilicon/ssm/proto/query"
 	"github.com/youtube/vitess/go/vt/sqlparser"
 )
 

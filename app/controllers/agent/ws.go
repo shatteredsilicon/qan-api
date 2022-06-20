@@ -23,15 +23,15 @@ import (
 	"time"
 
 	"github.com/cactus/go-statsd-client/statsd"
-	"github.com/percona/qan-api/app/agent"
-	"github.com/percona/qan-api/app/db"
-	"github.com/percona/qan-api/app/instance"
-	"github.com/percona/qan-api/app/qan"
-	"github.com/percona/qan-api/app/shared"
-	"github.com/percona/qan-api/app/ws"
-	"github.com/percona/qan-api/config"
-	"github.com/percona/qan-api/stats"
 	"github.com/revel/revel"
+	"github.com/shatteredsilicon/qan-api/app/agent"
+	"github.com/shatteredsilicon/qan-api/app/db"
+	"github.com/shatteredsilicon/qan-api/app/instance"
+	"github.com/shatteredsilicon/qan-api/app/qan"
+	"github.com/shatteredsilicon/qan-api/app/shared"
+	"github.com/shatteredsilicon/qan-api/app/ws"
+	"github.com/shatteredsilicon/qan-api/config"
+	"github.com/shatteredsilicon/qan-api/stats"
 	"golang.org/x/net/websocket"
 )
 

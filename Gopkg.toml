@@ -19,6 +19,12 @@ required = ["github.com/revel/cmd/revel"]
 [[override]]
   name = "gopkg.in/fsnotify.v1"
   source = "github.com/fsnotify/fsnotify"
+[[override]]
+  name = "github.com/cactus/go-statsd-client"
+  version = "=v3.1.1"
+[[override]]
+  name = "github.com/percona/go-mysql"
+  revision = "8863d30f944bc83d6d7b1d5c4b3cfa2d69d84cf3"
 
 [[constraint]]
   name = "github.com/pkg/errors"

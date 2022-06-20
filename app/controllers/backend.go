@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/percona/pmm/proto"
-	"github.com/percona/qan-api/app/shared"
 	"github.com/revel/revel"
+	"github.com/shatteredsilicon/qan-api/app/shared"
+	"github.com/shatteredsilicon/ssm/proto"
 )
 
 type BackEnd struct {

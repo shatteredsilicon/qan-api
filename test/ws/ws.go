@@ -20,7 +20,7 @@ package ws
 import (
 	"net/http"
 
-	"github.com/percona/qan-api/test/mock"
+	"github.com/shatteredsilicon/qan-api/test/mock"
 )
 
 func ConnectWs(client *mock.WebsocketClient, url string, extraHeaders map[string]string) error {

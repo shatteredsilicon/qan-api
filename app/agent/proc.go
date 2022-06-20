@@ -22,8 +22,8 @@ import (
 	"fmt"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/nu7hatch/gouuid"
-	"github.com/percona/pmm/proto"
+	uuid "github.com/nu7hatch/gouuid"
+	"github.com/shatteredsilicon/ssm/proto"
 )
 
 // A Processor updates oN tables for certain commands and replies. It is

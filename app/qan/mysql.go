@@ -27,14 +27,14 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/percona/go-mysql/event"
-	"github.com/percona/pmm/proto/metrics"
-	qp "github.com/percona/pmm/proto/qan"
-	"github.com/percona/qan-api/app/db"
-	"github.com/percona/qan-api/app/db/mysql"
-	"github.com/percona/qan-api/app/instance"
-	"github.com/percona/qan-api/app/shared"
-	"github.com/percona/qan-api/service/query"
-	"github.com/percona/qan-api/stats"
+	"github.com/shatteredsilicon/qan-api/app/db"
+	"github.com/shatteredsilicon/qan-api/app/db/mysql"
+	"github.com/shatteredsilicon/qan-api/app/instance"
+	"github.com/shatteredsilicon/qan-api/app/shared"
+	"github.com/shatteredsilicon/qan-api/service/query"
+	"github.com/shatteredsilicon/qan-api/stats"
+	"github.com/shatteredsilicon/ssm/proto/metrics"
+	qp "github.com/shatteredsilicon/ssm/proto/qan"
 )
 
 const (

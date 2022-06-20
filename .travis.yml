@@ -39,11 +39,11 @@ script:
   - export GOPATH=$(pwd)
   - mkdir -p /tmp/qan-api
   - cp -R ./ /tmp/qan-api
-  - mkdir -p ./src/github.com/percona
-  - mv /tmp/qan-api ./src/github.com/percona
-  - go build -o ./revel ./src/github.com/percona/qan-api/vendor/github.com/revel/cmd/revel
-  - ln -s $(pwd)/src/github.com/percona/qan-api/vendor/github.com/revel src/github.com/revel
-  - ./revel build github.com/percona/qan-api qan-api prod
+  - mkdir -p ./src/github.com/shatteredsilicon
+  - mv /tmp/qan-api ./src/github.com/shatteredsilicon
+  - go build -o ./revel ./src/github.com/shatteredsilicon/qan-api/vendor/github.com/revel/cmd/revel
+  - ln -s $(pwd)/src/github.com/shatteredsilicon/qan-api/vendor/github.com/revel src/github.com/revel
+  - ./revel build github.com/shatteredsilicon/qan-api qan-api prod
 
 notifications:
   email: false

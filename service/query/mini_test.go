@@ -21,9 +21,9 @@ import (
 	"reflect"
 	"testing"
 
-	qp "github.com/percona/pmm/proto/query"
-	"github.com/percona/qan-api/config"
-	"github.com/percona/qan-api/service/query"
+	"github.com/shatteredsilicon/qan-api/config"
+	"github.com/shatteredsilicon/qan-api/service/query"
+	qp "github.com/shatteredsilicon/ssm/proto/query"
 )
 
 func TestParse(t *testing.T) {

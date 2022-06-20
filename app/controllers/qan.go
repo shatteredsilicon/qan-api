@@ -21,14 +21,14 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	qp "github.com/percona/pmm/proto/qan"
-	"github.com/percona/qan-api/app/config"
-	"github.com/percona/qan-api/app/db"
-	"github.com/percona/qan-api/app/models"
-	"github.com/percona/qan-api/app/query"
-	"github.com/percona/qan-api/app/shared"
-	"github.com/percona/qan-api/stats"
 	"github.com/revel/revel"
+	"github.com/shatteredsilicon/qan-api/app/config"
+	"github.com/shatteredsilicon/qan-api/app/db"
+	"github.com/shatteredsilicon/qan-api/app/models"
+	"github.com/shatteredsilicon/qan-api/app/query"
+	"github.com/shatteredsilicon/qan-api/app/shared"
+	"github.com/shatteredsilicon/qan-api/stats"
+	qp "github.com/shatteredsilicon/ssm/proto/qan"
 )
 
 type QAN struct {

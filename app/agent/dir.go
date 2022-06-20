@@ -22,8 +22,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/percona/qan-api/app/shared"
-	"github.com/percona/qan-api/stats"
+	"github.com/shatteredsilicon/qan-api/app/shared"
+	"github.com/shatteredsilicon/qan-api/stats"
 )
 
 type agentInfo struct {
