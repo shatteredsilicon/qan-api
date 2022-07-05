@@ -166,7 +166,7 @@ func beforeController(c *revel.Controller) revel.Result {
 		apiBasePath = config.Get("api.base.path")
 	}
 	schema := "http"
-	if strings.Contains(strings.ToLower(c.Request.Request.Proto), "https") {
+	if strings.Contains(c.Request.Request.Header.Get("X-Forwarded-Proto"), "https") {
 		schema = "https"
 	}
 	c.Args["wsBase"] = "ws://" + c.Request.Request.Host + apiBasePath
