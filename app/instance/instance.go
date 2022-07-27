@@ -256,7 +256,7 @@ JOIN instances i ON qcm.instance_id = i.instance_id
 WHERE i.uuid = ?
 `, uuid)
 	if err != nil {
-		return mysql.Error(err, "MySQLHandler.Delete UPDATE instances")
+		return mysql.Error(err, "MySQLHandler.Delete DELETE query_class_metrics")
 	}
 
 	// clear query_examples table
@@ -266,6 +266,9 @@ FROM query_examples qe
 JOIN instances i ON qe.instance_id = i.instance_id
 WHERE i.uuid = ?
 `, uuid)
+	if err != nil {
+		return mysql.Error(err, "MySQLHandler.Delete DELETE query_examples")
+	}
 
 	// clear query_global_metrics table
 	_, err = h.dbm.DB().Exec(`
@@ -274,8 +277,5 @@ FROM query_global_metrics qgm
 JOIN instances i ON qgm.instance_id = i.instance_id
 WHERE i.uuid = ?
 `, uuid)
-	if err != nil {
-		return mysql.Error(err, "MySQLHandler.Delete UPDATE instances")
-	}
-	return mysql.Error(err, "MySQLHandler.Delete UPDATE instances")
+	return mysql.Error(err, "MySQLHandler.Delete DELETE query_global_metrics")
 }
