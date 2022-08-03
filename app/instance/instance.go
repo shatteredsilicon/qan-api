@@ -33,6 +33,7 @@ type DbHandler interface {
 	Get(uuid string) (uint, *proto.Instance, error)
 	Update(in proto.Instance) error
 	Delete(uuid string) error
+	DeleteData(uuid string) error
 }
 
 // --------------------------------------------------------------------------
@@ -244,4 +245,37 @@ func (h *MySQLHandler) Update(in proto.Instance) error {
 func (h *MySQLHandler) Delete(uuid string) error {
 	_, err := h.dbm.DB().Exec("UPDATE instances SET deleted = NOW() WHERE uuid = ?", uuid)
 	return mysql.Error(err, "MySQLHandler.Delete UPDATE instances")
+}
+
+func (h *MySQLHandler) DeleteData(uuid string) error {
+	// clear query_class_metrics table
+	_, err := h.dbm.DB().Exec(`
+DELETE qcm
+FROM query_class_metrics qcm
+JOIN instances i ON qcm.instance_id = i.instance_id
+WHERE i.uuid = ?
+`, uuid)
+	if err != nil {
+		return mysql.Error(err, "MySQLHandler.Delete DELETE query_class_metrics")
+	}
+
+	// clear query_examples table
+	_, err = h.dbm.DB().Exec(`
+DELETE qe
+FROM query_examples qe
+JOIN instances i ON qe.instance_id = i.instance_id
+WHERE i.uuid = ?
+`, uuid)
+	if err != nil {
+		return mysql.Error(err, "MySQLHandler.Delete DELETE query_examples")
+	}
+
+	// clear query_global_metrics table
+	_, err = h.dbm.DB().Exec(`
+DELETE qgm
+FROM query_global_metrics qgm
+JOIN instances i ON qgm.instance_id = i.instance_id
+WHERE i.uuid = ?
+`, uuid)
+	return mysql.Error(err, "MySQLHandler.Delete DELETE query_global_metrics")
 }
