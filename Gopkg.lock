@@ -10,14 +10,6 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:eae0d94da35c5803bfb4b719151f1a94d41c0301fd796301601d76befdd0ebbf"
-  name = "github.com/bradfitz/gomemcache"
-  packages = ["memcache"]
-  pruneopts = "T"
-  revision = "fb4bf637b56d66a1925c1bb0780b27dd714ec380"
-
-[[projects]]
   digest = "1:27eae393b09e5be149807a91a5d5a316db90172e63a847fc9c311d5ac52cac87"
   name = "github.com/cactus/go-statsd-client"
   packages = ["statsd"]
@@ -32,17 +24,6 @@
   pruneopts = "T"
   revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
   version = "v1.1.1"
-
-[[projects]]
-  digest = "1:e267cd0e36257315a403e00ac6e74828e3596d6ea3010708b3f7b2eb2fc75f1f"
-  name = "github.com/garyburd/redigo"
-  packages = [
-    "internal",
-    "redis",
-  ]
-  pruneopts = "T"
-  revision = "5dd9313ac9b7fa7d5f3114d1c146ae09897efd8e"
-  version = "v1.6.3"
 
 [[projects]]
   digest = "1:a51f83b872149289260897102f7364bc412f19c119295252d3d0bda439b23d98"
@@ -188,20 +169,11 @@
   name = "github.com/revel/revel"
   packages = [
     ".",
-    "cache",
     "testing",
   ]
   pruneopts = "T"
   revision = "75d66c3c990f01deb5ff2045c04da7eea5be39b2"
   version = "v0.14.0"
-
-[[projects]]
-  branch = "master"
-  digest = "1:b32828cd6652ccea275d3ac6617b42f258eff3557068dcadb5cfdedfc6ce228e"
-  name = "github.com/robfig/go-cache"
-  packages = ["."]
-  pruneopts = "T"
-  revision = "9fc39e0dbf62c034ec4e45e6120fc69433a3ec51"
 
 [[projects]]
   branch = "master"
@@ -220,8 +192,7 @@
   version = "v1.8.1"
 
 [[projects]]
-  branch = "1.x"
-  digest = "1:9b3e5d8ef50d439b1932f59dcc05378178a93203534e7ecd63c4f8e6d5773e45"
+  digest = "1:7256be42207048b8ed551e261d3250df6cc84c11e89cd314c6e80a3f3745df47"
   name = "github.com/shatteredsilicon/ssm"
   packages = [
     "proto",
@@ -231,7 +202,7 @@
     "proto/query",
   ]
   pruneopts = "T"
-  revision = "7e70b7911b75f768bb9521c5064145a8c2279637"
+  revision = "7a9f3c5b23e3f498dbe597cdaca95f6c5d7bdf05"
 
 [[projects]]
   digest = "1:d9e7cb966884b70c561c8f84c3532b27eaff4229f3fad504323ef358d3802b84"
@@ -378,8 +349,6 @@
     "github.com/revel/cmd/revel",
     "github.com/revel/config",
     "github.com/revel/revel",
-    "github.com/revel/revel/cache",
-    "github.com/revel/revel/testing",
     "github.com/shatteredsilicon/ssm/proto",
     "github.com/shatteredsilicon/ssm/proto/config",
     "github.com/shatteredsilicon/ssm/proto/metrics",
