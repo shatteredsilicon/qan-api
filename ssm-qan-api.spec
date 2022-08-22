@@ -43,11 +43,11 @@ cp -r ${HOME}/go/src/%{provider_prefix}/vendor/github.com/revel ${HOME}/go/src/g
 
 %build
 mkdir -p bin release
+cp -r $(go env GOROOT) ${HOME}/goroot
+export GOROOT=${HOME}/goroot
 export GOPATH=${HOME}/go
 export APP_VERSION="%{version}"
 GO111MODULE=off go build -o ./revel ${GOPATH}/src/%{provider_prefix}/vendor/github.com/revel/cmd/revel
-#find ${GOPATH}/src/%{provider_prefix}/vendor -name "testdata" -type d -prune -exec rm -rf "{}" \;
-#rm -rf ${GOPATH}/src/%{provider_prefix}/vendor/golang.org/x/tools/gopls
 GO111MODULE=off ./revel build %{provider_prefix} release prod
 rm -rf release/src/github.com/shatteredsilicon/qan-api
 mkdir -p ./src
