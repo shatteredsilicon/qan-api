@@ -195,7 +195,7 @@ const queryReportTotal = `
 `
 
 const queryReportTemplate = `
-	SELECT
+	SELECT STRAIGHT_JOIN
 		qcm.query_class_id AS query_class_id,
 		COALESCE(SUM(qcm.query_count), 0) AS query_count,
 		COALESCE(SUM(qcm.Query_time_sum), 0) AS query_time_sum,
