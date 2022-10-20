@@ -192,8 +192,10 @@ func (m *Mini) Parse(fingerprint, example, defaultDb string) (QueryInfo, error) 
 	m.parseChan <- try
 	select {
 	case q = <-try.queryChan:
-	case <-try.crashChan:
-		fmt.Printf("WARN: query crashes sqlparser: %s\n", query)
+	case expected := <-try.crashChan:
+		if !expected {
+			fmt.Printf("WARN: query crashes sqlparser: %s\n", query)
+		}
 		go m.parse()
 		return m.usePerl(query, q, err)
 	}
@@ -212,8 +214,12 @@ func (m *Mini) Parse(fingerprint, example, defaultDb string) (QueryInfo, error) 
 func (m *Mini) parse() {
 	var crashChan chan bool
 	defer func() {
-		if err := recover(); err != nil {
-			crashChan <- true
+		if r := recover(); r != nil {
+			if err, ok := r.(error); ok && err == ErrNotSupported {
+				crashChan <- true
+			} else {
+				crashChan <- false
+			}
 		}
 	}()
 	for {
@@ -318,7 +324,10 @@ func getTablesFromTableExpr(te sqlparser.TableExpr, depth uint) (tables protoTab
 	depth++
 	switch a := te.(type) {
 	case *sqlparser.AliasedTableExpr:
-		n := a.Expr.(sqlparser.TableName)
+		n, ok := a.Expr.(sqlparser.TableName)
+		if !ok {
+			panic(ErrNotSupported)
+		}
 		db := n.Qualifier.String()
 		tbl := parseTableName(n.Name.String())
 		if db != "" || tbl != "" {
