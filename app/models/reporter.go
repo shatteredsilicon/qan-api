@@ -171,7 +171,7 @@ func (r report) SparklineData(endTs int64, intervalTs int64, queryClassID uint, 
 }
 
 const queryReportCountUniqueTemplate = `
-	SELECT STRAIGHT_JOIN
+	SELECT
 		COUNT(DISTINCT qcm.query_class_id)
 	FROM query_class_metrics AS qcm
 	JOIN query_classes AS qc ON qcm.query_class_id = qc.query_class_id
