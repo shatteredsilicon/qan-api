@@ -12,3 +12,4 @@ tags
 .tags
 .vscode/
 Session.vim
+vendor/
