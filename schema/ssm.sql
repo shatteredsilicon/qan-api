@@ -395,4 +395,5 @@ CREATE TABLE IF NOT EXISTS query_class_metrics (
   --
   PRIMARY KEY (query_class_id, instance_id, start_ts),
   INDEX (start_ts)
-);
+)
+  PAGE_COMPRESSED=1;
