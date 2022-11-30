@@ -105,6 +105,40 @@ func (c *Query) UpdateTables(id string) revel.Result {
 	return c.RenderNoContent()
 }
 
+// UpdateProcedures PUT /queries/:id/procedures
+func (c *Query) UpdateProcedures(id string) revel.Result {
+	classID := c.Args["classId"].(uint)
+
+	body, err := ioutil.ReadAll(c.Request.Body)
+	if err != nil {
+		return c.Error(err, "Query.UpdateTables: ioutil.ReadAll")
+	}
+	if len(body) == 0 {
+		return c.BadRequest(nil, "empty body (no data posted)")
+	}
+
+	// We store procedures as a JSON string, so we could just store the content
+	// body as-is, but let's decode it to make sure it's valid and avoid
+	// "garbage in, garbage out".
+	var procedures []queryProto.Procedure
+	err = json.Unmarshal(body, &procedures)
+	if err != nil {
+		return c.BadRequest(err, "cannot decode Table array")
+	}
+
+	dbm := c.Args["dbm"].(db.Manager)
+	if err := dbm.Open(); err != nil {
+		return c.Error(err, "Query.UpdateTables: dbm.Open")
+	}
+
+	queryHandler := query.NewMySQLHandler(dbm, stats.NullStats())
+	if err := queryHandler.UpdateProcedures(classID, procedures); err != nil {
+		return c.Error(err, "Query.UpdateTables: queryHandler.Tables")
+	}
+
+	return c.RenderNoContent()
+}
+
 // GET /queries/:id/examples
 func (c *Query) GetExamples(id string) revel.Result {
 	classId := c.Args["classId"].(uint)

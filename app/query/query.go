@@ -57,7 +57,7 @@ func NewMySQLHandler(dbm db.Manager, stats *stats.Stats) *MySQLHandler {
 }
 
 func (h *MySQLHandler) Get(ids []string) (map[string]queryProto.Query, error) {
-	q := "SELECT checksum, COALESCE(abstract, ''), fingerprint, COALESCE(tables, ''), first_seen, last_seen, status" +
+	q := "SELECT checksum, COALESCE(abstract, ''), fingerprint, COALESCE(tables, ''), COALESCE(procedures, ''), first_seen, last_seen, status" +
 		" FROM query_classes" +
 		" WHERE checksum IN (" + shared.Placeholders(len(ids)) + ")"
 	v := shared.GenericStringList(ids)
@@ -70,12 +70,13 @@ func (h *MySQLHandler) Get(ids []string) (map[string]queryProto.Query, error) {
 	queries := map[string]queryProto.Query{}
 	for rows.Next() {
 		query := queryProto.Query{}
-		var tablesJSON string
+		var tablesJSON, proceduresJSON string
 		err := rows.Scan(
 			&query.Id,
 			&query.Abstract,
 			&query.Fingerprint,
 			&tablesJSON,
+			&proceduresJSON,
 			&query.FirstSeen,
 			&query.LastSeen,
 			&query.Status,
@@ -89,6 +90,13 @@ func (h *MySQLHandler) Get(ids []string) (map[string]queryProto.Query, error) {
 				return nil, err
 			}
 			query.Tables = tables
+		}
+		if proceduresJSON != "" {
+			var procedures []queryProto.Procedure
+			if err := json.Unmarshal([]byte(proceduresJSON), &procedures); err != nil {
+				return nil, err
+			}
+			query.Procedures = procedures
 		}
 		queries[query.Id] = query
 	}
@@ -167,15 +175,52 @@ func (h *MySQLHandler) UpdateExample(classId, instanceId uint, example queryProt
 	return nil
 }
 
-func (h *MySQLHandler) UpdateTables(classId uint, tables []queryProto.Table) error {
+// UpdateTables writes JSON data of tables
+// into table query_classes
+func (h *MySQLHandler) UpdateTables(classID uint, tables []queryProto.Table) error {
 	// We store []query.Table as a JSON string because this is SQL, not NoSQL.
 	bytes, err := json.Marshal(tables)
 	if err != nil {
 		return err
 	}
-	_, err = h.dbm.DB().Exec("UPDATE query_classes SET tables = ? WHERE query_class_id = ?", string(bytes), classId)
+	_, err = h.dbm.DB().Exec("UPDATE query_classes SET tables = ? WHERE query_class_id = ?", string(bytes), classID)
 	if err != nil {
 		return mysql.Error(err, "UpdateTables: UPDATE query_classes")
+	}
+	return nil
+}
+
+// UpdateProcedures writes JSON data of procedures
+// into table query_classes
+func (h *MySQLHandler) UpdateProcedures(classID uint, procedures []queryProto.Procedure) error {
+	// We store []query.Procedure as a JSON string because this is SQL, not NoSQL.
+	bytes, err := json.Marshal(procedures)
+	if err != nil {
+		return err
+	}
+	_, err = h.dbm.DB().Exec("UPDATE query_classes SET procedures = ? WHERE query_class_id = ?", string(bytes), classID)
+	if err != nil {
+		return mysql.Error(err, "UpdateProcedures: UPDATE query_classes")
+	}
+	return nil
+}
+
+// UpdateTablesAndProcedures writes JSON data of talbes and procedures
+// into table query_classes
+func (h *MySQLHandler) UpdateTablesAndProcedures(classID uint, tables []queryProto.Table, procedures []queryProto.Procedure) error {
+	// We store []query.Table and []query.Procedure as a JSON string because this is SQL, not NoSQL.
+	tableBytes, err := json.Marshal(tables)
+	if err != nil {
+		return err
+	}
+	procedureBytes, err := json.Marshal(procedures)
+	if err != nil {
+		return err
+	}
+
+	_, err = h.dbm.DB().Exec("UPDATE query_classes SET tables = ?, procedures = ? WHERE query_class_id = ?", string(tableBytes), string(procedureBytes), classID)
+	if err != nil {
+		return mysql.Error(err, "UpdateTablesAndProcedures: UPDATE query_classes")
 	}
 	return nil
 }
@@ -230,7 +275,7 @@ func (h *MySQLHandler) Tables(classId uint, m *queryService.Mini) ([]queryProto.
 	// The sqlparser was able to handle the query, so marshal the tables
 	// into a string and update the tables column so next time we don't
 	// have to parse the query.
-	if err := h.UpdateTables(classId, tableInfo.Tables); err != nil {
+	if err := h.UpdateTablesAndProcedures(classId, tableInfo.Tables, tableInfo.Procedures); err != nil {
 		return nil, err
 	}
 

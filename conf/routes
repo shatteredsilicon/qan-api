@@ -45,6 +45,7 @@ GET	/queries/:id/examples	Query.GetExamples
 PUT	/queries/:id/examples	Query.UpdateExample
 GET	/queries/:id/tables	Query.GetTables
 PUT	/queries/:id/tables	Query.UpdateTables
+PUT	/queries/:id/procedures	Query.UpdateProcedures
 
 # ###########################################################################
 # Query Analytics
