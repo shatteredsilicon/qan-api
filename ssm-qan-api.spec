@@ -3,6 +3,8 @@
 # it is impossible to pass ldflags to revel, so disable check
 %undefine _missing_build_ids_terminate_build
 
+%global revel_cmd_version   0.14.2
+
 %global provider        github
 %global provider_tld	com
 %global project         shatteredsilicon
@@ -17,6 +19,7 @@ Summary:	Query Analytics API for SSM
 License:	AGPLv3
 URL:		https://%{provider_prefix}
 Source0:	%{name}-%{version}.tar.gz
+Source1:    https://github.com/percona-lab/revel-cmd/archive/v%{revel_cmd_version}/revel-cmd-v%{revel_cmd_version}.tar.gz
 
 BuildRequires:	golang
 Requires:	perl
@@ -36,6 +39,8 @@ See the SSM docs for more information.
 %prep
 %setup -T -c -n %{name}
 %setup -q -c -a 0 -n %{name}
+%setup -q -T -D -a 1 -n %{name}
+mv revel-cmd-%{revel_cmd_version} %{name}/vendor/github.com/revel/cmd
 mkdir -p ${HOME}/go/src/%{provider}.%{provider_tld}/%{project}
 mv %{name} ${HOME}/go/src/%{provider_prefix}
 cp -r ${HOME}/go/src/%{provider_prefix}/vendor/github.com/revel ${HOME}/go/src/github.com/revel
