@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS query_classes (
   abstract           VARCHAR(100) DEFAULT NULL, -- SELECT t
   fingerprint        VARCHAR(5000) NOT NULL,    -- select * from t where id=?
   tables             TEXT DEFAULT NULL,
+  procedures         TEXT DEFAULT NULL,
   first_seen         TIMESTAMP NULL DEFAULT NULL,
   last_seen          TIMESTAMP NULL DEFAULT NULL,
   status             CHAR(3) NOT NULL DEFAULT 'new',
@@ -397,3 +398,5 @@ CREATE TABLE IF NOT EXISTS query_class_metrics (
   INDEX (start_ts)
 )
   PAGE_COMPRESSED=1;
+
+ALTER TABLE `query_classes` ADD COLUMN IF NOT EXISTS `procedures` TEXT DEFAULT NULL;

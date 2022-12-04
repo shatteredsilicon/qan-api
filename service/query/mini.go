@@ -19,6 +19,7 @@ package query
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -27,13 +28,35 @@ import (
 	"strings"
 
 	queryProto "github.com/shatteredsilicon/ssm/proto/query"
-	"github.com/youtube/vitess/go/vt/sqlparser"
+	"vitess.io/vitess/go/vt/sqlparser"
 )
 
+// QueryInfo information about query
 type QueryInfo struct {
 	Fingerprint string
 	Abstract    string
 	Tables      []queryProto.Table
+	Procedures  []queryProto.Procedure
+}
+
+// TableJSON returns tables as JSON string
+func (q QueryInfo) TableJSON() string {
+	if len(q.Tables) == 0 {
+		return ""
+	}
+
+	bytes, _ := json.Marshal(q.Tables)
+	return string(bytes)
+}
+
+// ProcedureJSON returns procedures as JSON string
+func (q QueryInfo) ProcedureJSON() string {
+	if len(q.Procedures) == 0 {
+		return ""
+	}
+
+	bytes, _ := json.Marshal(q.Procedures)
+	return string(bytes)
 }
 
 type parseTry struct {
@@ -206,6 +229,11 @@ func (m *Mini) Parse(fingerprint, example, defaultDb string) (QueryInfo, error) 
 				q.Tables[n].Db = defaultDb
 			}
 		}
+		for n, t := range q.Procedures {
+			if t.DB == "" {
+				q.Procedures[n].DB = defaultDb
+			}
+		}
 	}
 
 	return q, nil
@@ -241,7 +269,6 @@ func (m *Mini) parse() {
 			case *sqlparser.Insert:
 				// REPLACEs will be recognized by sqlparser as INSERTs and the Action field
 				// will have the real command
-				q.Abstract = strings.ToUpper(s.Action)
 				if m.Debug {
 					fmt.Printf("struct: %#v\n", s)
 				}
@@ -277,19 +304,24 @@ func (m *Mini) parse() {
 				sql := sqlparser.NewTrackedBuffer(nil)
 				s.Format(sql)
 				q.Abstract = strings.ToUpper(sql.String())
+			case *sqlparser.CallProc:
+				q.Abstract = "CALL"
+				q.Procedures = append(q.Procedures, queryProto.Procedure{
+					DB:   s.Name.Qualifier.String(),
+					Name: s.Name.Name.String(),
+				})
+			case sqlparser.DDLStatement:
+				q.Abstract = s.GetAction().ToString()
+				t := s.GetTable()
+				q.Tables = append(q.Tables, queryProto.Table{
+					Db:    t.Qualifier.String(),
+					Table: t.Name.String(),
+				})
 			default:
 				if m.Debug {
 					fmt.Printf("unsupported type: %#v\n", p.s)
 				}
 				q, _ = m.usePerl(p.query, q, ErrNotSupported)
-				switch use := p.s.(type) {
-				case *sqlparser.DDL:
-					table := queryProto.Table{
-						Db:    use.NewName.Qualifier.String(),
-						Table: use.NewName.Name.String(),
-					}
-					q.Tables = append(q.Tables, table)
-				}
 			}
 			p.queryChan <- q
 		case <-m.stopChan:

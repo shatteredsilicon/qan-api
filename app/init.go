@@ -40,6 +40,9 @@ import (
 	queryService "github.com/shatteredsilicon/qan-api/service/query"
 	"github.com/shatteredsilicon/qan-api/stats"
 	"github.com/shatteredsilicon/ssm/proto"
+
+	// dummy import to keep the package
+	_ "github.com/revel/modules/testrunner/app/controllers"
 )
 
 // AppVersion is set from linker flags set by revel/cmd:

@@ -19,7 +19,6 @@ package qan
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
@@ -121,15 +120,15 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 
 		if id != 0 {
 			// Existing class, update it.  These update aren't fatal, but they shouldn't fail.
-			var tables string
+			var q query.QueryInfo
 			var err error
 			if in.Subsystem == instance.SubsystemNameMySQL {
-				_, tables, err = h.getQueryAndTables(class)
+				q, err = h.getQuery(class)
 				if err != nil {
 					log.Printf("WARNING: cannot parse query to update: %s", err)
 				}
 			}
-			if err := h.updateQueryClass(id, lastSeen, tables); err != nil {
+			if err := h.updateQueryClass(id, lastSeen, q.TableJSON(), q.ProcedureJSON()); err != nil {
 				log.Printf("WARNING: cannot update query class, skipping: %s: %#v: %s", err, class, trace)
 				continue
 			}
@@ -261,17 +260,18 @@ func (h *MySQLMetricWriter) getClassId(checksum string) (uint, error) {
 
 func (h *MySQLMetricWriter) newClass(instanceId uint, subsystem string, class *event.Class, lastSeen string) (uint, error) {
 	var queryAbstract, queryFingerprint string
-	var tables interface{}
+	var tables, procedures interface{}
 
 	switch subsystem {
 	case instance.SubsystemNameMySQL:
 		t := time.Now()
 		var query query.QueryInfo
 		var err error
-		query, tables, err = h.getQueryAndTables(class)
+		query, err = h.getQuery(class)
 		if err != nil {
 			return 0, err
 		}
+		tables, procedures = query.TableJSON(), query.ProcedureJSON()
 
 		h.stats.TimingDuration(h.stats.System("abstract-fingerprint"), time.Now().Sub(t), h.stats.SampleRate)
 
@@ -294,7 +294,7 @@ func (h *MySQLMetricWriter) newClass(instanceId uint, subsystem string, class *e
 	// The query checksum is the class is identified externally (in a QAN report).
 	// Since this is the first time we've seen the query, firstSeen=lastSeen.
 	t := time.Now()
-	res, err := h.stmtInsertQueryClass.Exec(class.Id, queryAbstract, queryFingerprint, tables, lastSeen, lastSeen)
+	res, err := h.stmtInsertQueryClass.Exec(class.Id, queryAbstract, queryFingerprint, tables, procedures, lastSeen, lastSeen)
 
 	h.stats.TimingDuration(h.stats.System("insert-query-class"), time.Now().Sub(t), h.stats.SampleRate)
 	if err != nil {
@@ -315,8 +315,8 @@ func (h *MySQLMetricWriter) newClass(instanceId uint, subsystem string, class *e
 	return uint(classId), nil // success
 }
 
-func (h *MySQLMetricWriter) getQueryAndTables(class *event.Class) (query.QueryInfo, string, error) {
-	var schema, tables string
+func (h *MySQLMetricWriter) getQuery(class *event.Class) (query.QueryInfo, error) {
+	var schema string
 	var queryInfo query.QueryInfo
 	// Default schema to add to the tables if there is no schema in the query like:
 	// SELECT a, b, c FROM table
@@ -324,7 +324,7 @@ func (h *MySQLMetricWriter) getQueryAndTables(class *event.Class) (query.QueryIn
 		schema = class.Example.Db
 	}
 	if len(class.Fingerprint) < 2 {
-		return queryInfo, "", fmt.Errorf("empty fingerprint")
+		return queryInfo, fmt.Errorf("empty fingerprint")
 	}
 
 	queryExample := ""
@@ -333,19 +333,15 @@ func (h *MySQLMetricWriter) getQueryAndTables(class *event.Class) (query.QueryIn
 	}
 	query, err := h.m.Parse(class.Fingerprint, queryExample, schema)
 	if err != nil {
-		return queryInfo, "", err
+		return queryInfo, err
 	}
 
-	if len(query.Tables) > 0 {
-		bytes, _ := json.Marshal(query.Tables)
-		tables = string(bytes)
-	}
-	return query, tables, nil
+	return query, nil
 }
 
-func (h *MySQLMetricWriter) updateQueryClass(queryClassId uint, lastSeen, tables string) error {
+func (h *MySQLMetricWriter) updateQueryClass(queryClassId uint, lastSeen, tables, procedures string) error {
 	t := time.Now()
-	_, err := h.stmtUpdateQueryClass.Exec(lastSeen, lastSeen, tables, queryClassId)
+	_, err := h.stmtUpdateQueryClass.Exec(lastSeen, lastSeen, tables, procedures, queryClassId)
 	h.stats.TimingDuration(h.stats.System("update-query-class"), time.Now().Sub(t), h.stats.SampleRate)
 	return mysql.Error(err, "updateQueryClass UPDATE query_classes")
 }
@@ -492,8 +488,8 @@ func (h *MySQLMetricWriter) prepareStatements() {
 	*/
 	h.stmtInsertQueryClass, err = h.dbm.DB().Prepare(
 		"INSERT INTO query_classes" +
-			" (checksum, abstract, fingerprint, tables, first_seen, last_seen)" +
-			" VALUES (?, ?, ?, ?, COALESCE(?, NOW()), ?)")
+			" (checksum, abstract, fingerprint, tables, procedures, first_seen, last_seen)" +
+			" VALUES (?, ?, ?, ?, ?, COALESCE(?, NOW()), ?)")
 	if err != nil {
 		panic("Failed to prepare stmtInsertQueryClass: " + err.Error())
 	}
@@ -503,7 +499,8 @@ func (h *MySQLMetricWriter) prepareStatements() {
 		"UPDATE query_classes" +
 			" SET first_seen = LEAST(first_seen, ?), " +
 			" last_seen = GREATEST(last_seen, ?), " +
-			" tables = ? " +
+			" tables = ?, " +
+			" procedures = ? " +
 			" WHERE query_class_id = ?")
 	if err != nil {
 		panic("Failed to prepare stmtUpdateQueryClass: " + err.Error())
