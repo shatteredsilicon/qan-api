@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS query_examples (
   db              VARCHAR(255) NOT NULL DEFAULT '',
   Query_time      FLOAT NOT NULL DEFAULT 0,
   query           TEXT NOT NULL,
+  `explain`       TEXT NOT NULL,
   --
   PRIMARY KEY (query_class_id, instance_id, period)
 ) CHARSET='utf8';
@@ -400,3 +401,5 @@ CREATE TABLE IF NOT EXISTS query_class_metrics (
   PAGE_COMPRESSED=1;
 
 ALTER TABLE `query_classes` ADD COLUMN IF NOT EXISTS `procedures` TEXT DEFAULT NULL;
+
+ALTER TABLE `query_examples` ADD COLUMN IF NOT EXISTS `explain` TEXT DEFAULT NULL;

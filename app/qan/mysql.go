@@ -25,7 +25,6 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/percona/go-mysql/event"
 	"github.com/shatteredsilicon/qan-api/app/db"
 	"github.com/shatteredsilicon/qan-api/app/db/mysql"
 	"github.com/shatteredsilicon/qan-api/app/instance"
@@ -33,6 +32,7 @@ import (
 	"github.com/shatteredsilicon/qan-api/service/query"
 	"github.com/shatteredsilicon/qan-api/stats"
 	"github.com/shatteredsilicon/ssm/proto/metrics"
+	"github.com/shatteredsilicon/ssm/proto/qan"
 	qp "github.com/shatteredsilicon/ssm/proto/qan"
 )
 
@@ -258,7 +258,7 @@ func (h *MySQLMetricWriter) getClassId(checksum string) (uint, error) {
 	return classId, nil
 }
 
-func (h *MySQLMetricWriter) newClass(instanceId uint, subsystem string, class *event.Class, lastSeen string) (uint, error) {
+func (h *MySQLMetricWriter) newClass(instanceId uint, subsystem string, class *qan.Class, lastSeen string) (uint, error) {
 	var queryAbstract, queryFingerprint string
 	var tables, procedures interface{}
 
@@ -315,7 +315,7 @@ func (h *MySQLMetricWriter) newClass(instanceId uint, subsystem string, class *e
 	return uint(classId), nil // success
 }
 
-func (h *MySQLMetricWriter) getQuery(class *event.Class) (query.QueryInfo, error) {
+func (h *MySQLMetricWriter) getQuery(class *qan.Class) (query.QueryInfo, error) {
 	var schema string
 	var queryInfo query.QueryInfo
 	// Default schema to add to the tables if there is no schema in the query like:
@@ -346,15 +346,15 @@ func (h *MySQLMetricWriter) updateQueryClass(queryClassId uint, lastSeen, tables
 	return mysql.Error(err, "updateQueryClass UPDATE query_classes")
 }
 
-func (h *MySQLMetricWriter) updateQueryExample(instanceId uint, class *event.Class, classId uint, lastSeen string) error {
+func (h *MySQLMetricWriter) updateQueryExample(instanceId uint, class *qan.Class, classId uint, lastSeen string) error {
 	// INSERT ON DUPLICATE KEY UPDATE
 	t := time.Now()
-	_, err := h.stmtInsertQueryExample.Exec(instanceId, classId, lastSeen, lastSeen, class.Example.Db, class.Example.QueryTime, class.Example.Query)
+	_, err := h.stmtInsertQueryExample.Exec(instanceId, classId, lastSeen, lastSeen, class.Example.Db, class.Example.QueryTime, class.Example.Query, class.Example.Explain)
 	h.stats.TimingDuration(h.stats.System("update-query-example"), time.Now().Sub(t), h.stats.SampleRate)
 	return mysql.Error(err, "updateQueryExample INSERT query_examples")
 }
 
-func (h *MySQLMetricWriter) getMetricValues(e *event.Metrics) []interface{} {
+func (h *MySQLMetricWriter) getMetricValues(e *qan.Metrics) []interface{} {
 	t := time.Now()
 	defer func() {
 		h.stats.TimingDuration(h.stats.System("get-metric-values"), time.Now().Sub(t), h.stats.SampleRate)
@@ -469,8 +469,8 @@ func (h *MySQLMetricWriter) prepareStatements() {
 
 	h.stmtInsertQueryExample, err = h.dbm.DB().Prepare(
 		"INSERT INTO query_examples" +
-			" (instance_id, query_class_id, period, ts, db, Query_time, query)" +
-			" VALUES (?, ?, DATE(?), ?, ?, ?, ?)" +
+			" (instance_id, query_class_id, period, ts, db, Query_time, query, `explain`)" +
+			" VALUES (?, ?, DATE(?), ?, ?, ?, ?, ?)" +
 			" ON DUPLICATE KEY UPDATE" +
 			" query=IF(VALUES(Query_time) > COALESCE(Query_time, 0), VALUES(query), query)," +
 			" ts=IF(VALUES(Query_time) > COALESCE(Query_time, 0), VALUES(ts), ts)," +

@@ -146,12 +146,12 @@ func (h *MySQLHandler) Examples(classId, instanceId uint) ([]queryProto.Example,
 
 func (h *MySQLHandler) Example(classId, instanceId uint, period time.Time) (queryProto.Example, error) {
 	e := queryProto.Example{}
-	q := "SELECT period, ts, db, Query_time, query" +
+	q := "SELECT period, ts, db, Query_time, query, `explain`" +
 		" FROM query_examples" +
 		" WHERE query_class_id = ? AND instance_id = ? AND period <= ?" +
 		" ORDER BY period DESC" +
 		" LIMIT 1"
-	err := h.dbm.DB().QueryRow(q, classId, instanceId, period).Scan(&e.Period, &e.Ts, &e.Db, &e.QueryTime, &e.Query)
+	err := h.dbm.DB().QueryRow(q, classId, instanceId, period).Scan(&e.Period, &e.Ts, &e.Db, &e.QueryTime, &e.Query, &e.Explain)
 	if err != nil {
 		return e, mysql.Error(err, "Example: SELECT query_examples")
 	}
