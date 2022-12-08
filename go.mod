@@ -13,7 +13,7 @@ require (
 	github.com/revel/config v0.14.0
 	github.com/revel/modules v0.14.0
 	github.com/revel/revel v0.14.0
-	github.com/shatteredsilicon/ssm v0.0.0-20221204074956-2571384b63a1
+	github.com/shatteredsilicon/ssm v0.0.0-20221207190931-98c02733273b
 	github.com/stretchr/testify v1.8.0
 	golang.org/x/net v0.2.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
