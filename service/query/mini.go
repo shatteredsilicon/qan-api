@@ -256,12 +256,12 @@ func (m *Mini) parse() {
 			q := p.q
 			crashChan = p.crashChan
 			switch s := p.s.(type) {
-			case *sqlparser.Select:
+			case sqlparser.SelectStatement:
 				q.Abstract = "SELECT"
 				if m.Debug {
 					fmt.Printf("struct: %#v\n", s)
 				}
-				tables := getTablesFromTableExprs(s.From)
+				tables := getTablesFromSelectStmt(s, 0)
 				if len(tables) > 0 {
 					q.Tables = append(q.Tables, tables...)
 					q.Abstract += " " + tables.String()
@@ -269,6 +269,11 @@ func (m *Mini) parse() {
 			case *sqlparser.Insert:
 				// REPLACEs will be recognized by sqlparser as INSERTs and the Action field
 				// will have the real command
+				if s.Action == sqlparser.InsertAct {
+					q.Abstract = "INSERT"
+				} else if s.Action == sqlparser.ReplaceAct {
+					q.Abstract = "REPLACE"
+				}
 				if m.Debug {
 					fmt.Printf("struct: %#v\n", s)
 				}
@@ -311,8 +316,15 @@ func (m *Mini) parse() {
 					Name: s.Name.Name.String(),
 				})
 			case sqlparser.DDLStatement:
-				q.Abstract = s.GetAction().ToString()
+				items := []string{strings.ToUpper(s.GetAction().ToString())}
 				t := s.GetTable()
+				items = append(items, "TABLE")
+				if t.Qualifier.String() != "" {
+					items = append(items, fmt.Sprintf("%s.%s", t.Qualifier.String(), t.Name.String()))
+				} else {
+					items = append(items, t.Name.String())
+				}
+				q.Abstract = strings.Join(items, " ")
 				q.Tables = append(q.Tables, queryProto.Table{
 					Db:    t.Qualifier.String(),
 					Table: t.Name.String(),
@@ -349,26 +361,47 @@ func getTablesFromTableExprs(tes sqlparser.TableExprs) (tables protoTables) {
 	return tables
 }
 
-func getTablesFromTableExpr(te sqlparser.TableExpr, depth uint) (tables protoTables) {
+func getTablesFromSelectStmt(ss sqlparser.SelectStatement, depth uint) (sTables protoTables) {
 	if depth > MAX_JOIN_DEPTH {
 		return nil
 	}
 	depth++
+
+	switch t := ss.(type) {
+	case *sqlparser.Select:
+		sTables = append(sTables, getTablesFromTableExprs(sqlparser.TableExprs(t.From))...)
+	case *sqlparser.Union:
+		sTables = append(sTables, getTablesFromSelectStmt(t.Left, depth)...)
+		sTables = append(sTables, getTablesFromSelectStmt(t.Right, depth)...)
+	}
+
+	return sTables
+}
+
+func getTablesFromTableExpr(te sqlparser.TableExpr, depth uint) (tables protoTables) {
+	if depth > MAX_JOIN_DEPTH {
+		return nil
+	}
+
+	depth++
 	switch a := te.(type) {
 	case *sqlparser.AliasedTableExpr:
-		n, ok := a.Expr.(sqlparser.TableName)
-		if !ok {
-			panic(ErrNotSupported)
-		}
-		db := n.Qualifier.String()
-		tbl := parseTableName(n.Name.String())
-		if db != "" || tbl != "" {
-			table := queryProto.Table{
-				Db:    db,
-				Table: tbl,
+		switch a.Expr.(type) {
+		case sqlparser.TableName:
+			t := a.Expr.(sqlparser.TableName)
+			db := t.Qualifier.String()
+			tbl := parseTableName(t.Name.String())
+			if db != "" || tbl != "" {
+				table := queryProto.Table{
+					Db:    db,
+					Table: tbl,
+				}
+				tables = append(tables, table)
 			}
-			tables = append(tables, table)
+		case *sqlparser.DerivedTable:
+			tables = append(tables, getTablesFromSelectStmt(a.Expr.(*sqlparser.DerivedTable).Select, depth)...)
 		}
+
 	case *sqlparser.JoinTableExpr:
 		// This case happens for JOIN clauses. It recurses to the bottom
 		// of the tree via the left expressions, then it unwinds. E.g. with
