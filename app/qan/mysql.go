@@ -47,12 +47,13 @@ type MySQLMetricWriter struct {
 	m     *query.Mini
 	stats *stats.Stats
 	// --
-	stmtSelectClassId       *sql.Stmt
-	stmtInsertGlobalMetrics *sql.Stmt
-	stmtInsertClassMetrics  *sql.Stmt
-	stmtInsertQueryExample  *sql.Stmt
-	stmtInsertQueryClass    *sql.Stmt
-	stmtUpdateQueryClass    *sql.Stmt
+	stmtSelectClassId             *sql.Stmt
+	stmtInsertGlobalMetrics       *sql.Stmt
+	stmtInsertClassMetrics        *sql.Stmt
+	stmtInsertQueryExample        *sql.Stmt
+	stmtInsertQueryClass          *sql.Stmt
+	stmtUpdateQueryClass          *sql.Stmt
+	stmtUpdateQueryClassWithoutTP *sql.Stmt
 }
 
 func NewMySQLMetricWriter(
@@ -128,7 +129,12 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 					log.Printf("WARNING: cannot parse query to update: %s", err)
 				}
 			}
-			if err := h.updateQueryClass(id, lastSeen, q.TableJSON(), q.ProcedureJSON()); err != nil {
+			if len(q.Tables) == 0 && len(q.Procedures) == 0 {
+				err = h.updateQueryClassWithoutTP(id, lastSeen)
+			} else {
+				err = h.updateQueryClass(id, lastSeen, q.TableJSON(), q.ProcedureJSON())
+			}
+			if err != nil {
 				log.Printf("WARNING: cannot update query class, skipping: %s: %#v: %s", err, class, trace)
 				continue
 			}
@@ -346,6 +352,13 @@ func (h *MySQLMetricWriter) updateQueryClass(queryClassId uint, lastSeen, tables
 	return mysql.Error(err, "updateQueryClass UPDATE query_classes")
 }
 
+func (h *MySQLMetricWriter) updateQueryClassWithoutTP(queryClassId uint, lastSeen string) error {
+	t := time.Now()
+	_, err := h.stmtUpdateQueryClassWithoutTP.Exec(lastSeen, lastSeen, queryClassId)
+	h.stats.TimingDuration(h.stats.System("update-query-class-without-tables-procedures"), time.Now().Sub(t), h.stats.SampleRate)
+	return mysql.Error(err, "updateQueryClassWithoutTP UPDATE query_classes")
+}
+
 func (h *MySQLMetricWriter) updateQueryExample(instanceId uint, class *qan.Class, classId uint, lastSeen string) error {
 	// INSERT ON DUPLICATE KEY UPDATE
 	t := time.Now()
@@ -505,6 +518,16 @@ func (h *MySQLMetricWriter) prepareStatements() {
 	if err != nil {
 		panic("Failed to prepare stmtUpdateQueryClass: " + err.Error())
 	}
+
+	// UPDATE query_classes without tables and procedures
+	h.stmtUpdateQueryClassWithoutTP, err = h.dbm.DB().Prepare(
+		"UPDATE query_classes" +
+			" SET first_seen = LEAST(first_seen, ?), " +
+			" last_seen = GREATEST(last_seen, ?) " +
+			" WHERE query_class_id = ?")
+	if err != nil {
+		panic("Failed to prepare stmtUpdateQueryClassWithoutTP: " + err.Error())
+	}
 }
 
 func (h *MySQLMetricWriter) closeStatements() {
@@ -514,6 +537,7 @@ func (h *MySQLMetricWriter) closeStatements() {
 	h.stmtInsertQueryExample.Close()
 	h.stmtInsertQueryClass.Close()
 	h.stmtUpdateQueryClass.Close()
+	h.stmtUpdateQueryClassWithoutTP.Close()
 }
 
 // --------------------------------------------------------------------------
