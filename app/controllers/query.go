@@ -27,6 +27,7 @@ import (
 	"github.com/shatteredsilicon/qan-api/app/instance"
 	"github.com/shatteredsilicon/qan-api/app/query"
 	"github.com/shatteredsilicon/qan-api/app/shared"
+	queryService "github.com/shatteredsilicon/qan-api/service/query"
 	"github.com/shatteredsilicon/qan-api/stats"
 	queryProto "github.com/shatteredsilicon/ssm/proto/query"
 )
@@ -91,6 +92,8 @@ func (c *Query) UpdateTables(id string) revel.Result {
 	if err != nil {
 		return c.BadRequest(err, "cannot decode Table array")
 	}
+	// remove duplicate tables
+	tables = queryService.RemoveDuplicateTables(tables)
 
 	dbm := c.Args["dbm"].(db.Manager)
 	if err := dbm.Open(); err != nil {
@@ -125,6 +128,8 @@ func (c *Query) UpdateProcedures(id string) revel.Result {
 	if err != nil {
 		return c.BadRequest(err, "cannot decode Table array")
 	}
+	// remove duplicate procedures
+	procedures = queryService.RemoveDuplicateProcedures(procedures)
 
 	dbm := c.Args["dbm"].(db.Manager)
 	if err := dbm.Open(); err != nil {

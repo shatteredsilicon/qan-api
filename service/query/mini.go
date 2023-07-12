@@ -335,6 +335,11 @@ func (m *Mini) parse() {
 				}
 				q, _ = m.usePerl(p.query, q, ErrNotSupported)
 			}
+
+			// deduplicate
+			q.Tables = RemoveDuplicateTables(q.Tables)
+			q.Procedures = RemoveDuplicateProcedures(q.Procedures)
+
 			p.queryChan <- q
 		case <-m.stopChan:
 			return
@@ -443,4 +448,42 @@ func parseTableName(tableName string) string {
 		tableName = ""
 	}
 	return tableName
+}
+
+// RemoveDuplicateTables removes duplicate tables
+// and returns the deduplicate tables
+func RemoveDuplicateTables(tables []queryProto.Table) []queryProto.Table {
+	if len(tables) == 0 {
+		return tables
+	}
+
+	newTables := make([]queryProto.Table, 0)
+	keysMap := make(map[string]struct{})
+	for _, t := range tables {
+		if _, ok := keysMap[t.String()]; !ok {
+			keysMap[t.String()] = struct{}{}
+			newTables = append(newTables, t)
+		}
+	}
+
+	return newTables
+}
+
+// RemoveDuplicateProcedures removes duplicate procedures
+// and returns the deduplicate procedures
+func RemoveDuplicateProcedures(procedures []queryProto.Procedure) []queryProto.Procedure {
+	if len(procedures) == 0 {
+		return procedures
+	}
+
+	newProcedures := make([]queryProto.Procedure, 0)
+	keysMap := make(map[string]struct{})
+	for _, p := range procedures {
+		if _, ok := keysMap[p.String()]; !ok {
+			keysMap[p.String()] = struct{}{}
+			newProcedures = append(newProcedures, p)
+		}
+	}
+
+	return newProcedures
 }
