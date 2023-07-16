@@ -24,6 +24,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/shatteredsilicon/qan-api/app/instance"
 	"github.com/shatteredsilicon/qan-api/app/shared"
 	"github.com/shatteredsilicon/qan-api/app/ws"
 	"github.com/shatteredsilicon/qan-api/stats"
@@ -38,6 +39,20 @@ const (
 
 func SaveData(wsConn ws.Connector, agentId uint, dbh *MySQLMetricWriter, stats *stats.Stats) error {
 	prefix := fmt.Sprintf("[qan.SaveData] agent_id=%d", agentId)
+
+	// get all existing instances
+	instances, err := dbh.ih.GetAll()
+	if err != nil {
+		return err
+	}
+
+	existMap := make(map[string]struct{})
+	for i := range instances {
+		if instances[i].Subsystem != instance.SubsystemNameMySQL && instances[i].Subsystem != instance.SubsystemNameMongo {
+			continue
+		}
+		existMap[instances[i].UUID] = struct{}{}
+	}
 
 	nMsgs := 0
 	for {
@@ -85,26 +100,29 @@ func SaveData(wsConn ws.Connector, agentId uint, dbh *MySQLMetricWriter, stats *
 			continue // next report
 		}
 
-		// Queue the data in a per-service queue.
-		tDb := time.Now()
-		err = dbh.Write(report)
-		stats.TimingDuration(stats.System("db"), time.Now().Sub(tDb), stats.SampleRate)
-		if err != nil {
-			if shared.IsNetworkError(err) {
-				// This is usually due to losing connection to MySQL. Return an error
-				// so the caller will restart the consumer.
-				return fmt.Errorf("dbh.Write: %s", err)
-			} else if err == shared.ErrReadOnlyDb {
-				return fmt.Errorf("dbh.Write: %s", err)
-			} else {
-				// This is usually duplicate key errors, stuff we can't recover
-				// from, so we just have to drop the data and move on. If it happens
-				// a lot for many orgs, then maybe there's a real db problem, but
-				// usually it's very random.
-				log.Printf("WARN: %s: dbh.Write: %s", prefix, err)
-				stats.Inc(stats.System("err-db"), 1, stats.SampleRate)
-				stats.Inc(stats.Agent("err-db"), 1, stats.SampleRate)
-				return nil
+		// check if instance exists first
+		if _, ok := existMap[report.UUID]; ok {
+			// Queue the data in a per-service queue.
+			tDb := time.Now()
+			err = dbh.Write(report)
+			stats.TimingDuration(stats.System("db"), time.Now().Sub(tDb), stats.SampleRate)
+			if err != nil {
+				if shared.IsNetworkError(err) {
+					// This is usually due to losing connection to MySQL. Return an error
+					// so the caller will restart the consumer.
+					return fmt.Errorf("dbh.Write: %s", err)
+				} else if err == shared.ErrReadOnlyDb {
+					return fmt.Errorf("dbh.Write: %s", err)
+				} else {
+					// This is usually duplicate key errors, stuff we can't recover
+					// from, so we just have to drop the data and move on. If it happens
+					// a lot for many orgs, then maybe there's a real db problem, but
+					// usually it's very random.
+					log.Printf("WARN: %s: dbh.Write: %s", prefix, err)
+					stats.Inc(stats.System("err-db"), 1, stats.SampleRate)
+					stats.Inc(stats.Agent("err-db"), 1, stats.SampleRate)
+					return nil
+				}
 			}
 		}
 
