@@ -34,6 +34,7 @@ type DbHandler interface {
 	Update(in proto.Instance) error
 	Delete(uuid string) error
 	DeleteData(uuid string) error
+	GetAll() ([]proto.Instance, error)
 }
 
 // --------------------------------------------------------------------------
