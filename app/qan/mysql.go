@@ -119,26 +119,8 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 			continue
 		}
 
-		if id != 0 {
-			// Existing class, update it.  These update aren't fatal, but they shouldn't fail.
-			var q query.QueryInfo
-			var err error
-			if in.Subsystem == instance.SubsystemNameMySQL {
-				q, err = h.getQuery(class)
-				if err != nil {
-					log.Printf("WARNING: cannot parse query to update: %s", err)
-				}
-			}
-			if len(q.Tables) == 0 && len(q.Procedures) == 0 {
-				err = h.updateQueryClassWithoutTP(id, lastSeen)
-			} else {
-				err = h.updateQueryClass(id, lastSeen, q.TableJSON(), q.ProcedureJSON())
-			}
-			if err != nil {
-				log.Printf("WARNING: cannot update query class, skipping: %s: %#v: %s", err, class, trace)
-				continue
-			}
-		} else {
+		classExists := id != 0
+		if !classExists {
 			// New class, create it.
 			id, err = h.newClass(instanceId, in.Subsystem, class, lastSeen)
 			if err != nil {
@@ -151,9 +133,38 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 		// The "!= nil" is for agent >= v1.0.11 which use *event.Class.Example,
 		// but agent <= v1.0.10 don't use a pointer so the struct is always
 		// present, so "class.Example.Query != """ filters out empty examples.
+		var lastExampleId, exampleRowsAffected int64
 		if class.Example != nil && class.Example.Query != "" {
-			if err = h.updateQueryExample(instanceId, class, id, lastSeen); err != nil {
+			if lastExampleId, exampleRowsAffected, err = h.updateQueryExample(instanceId, class, id, lastSeen); err != nil {
 				log.Printf("WARNING: cannot update query example: %s: %#v: %s", err, class, trace)
+			}
+		}
+
+		if classExists {
+			// Existing class, update it.  These update aren't fatal, but they shouldn't fail.
+			var q query.QueryInfo
+			var err error
+
+			// Parse the tables/procedures only if the query example gets updated,
+			// so the tables/procedures column in query_classes table are in sync
+			// with the db/query column in query_examples table
+			if in.Subsystem == instance.SubsystemNameMySQL && (lastExampleId > 0 || exampleRowsAffected > 0) {
+				q, err = h.getQuery(class)
+				if err != nil {
+					log.Printf("WARNING: cannot parse query to update: %s", err)
+				}
+			}
+
+			// Update the table/procedures column only if query example gets updated
+			if lastExampleId > 0 || exampleRowsAffected > 0 {
+				err = h.updateQueryClass(id, lastSeen, q.TableJSON(), q.ProcedureJSON())
+			} else {
+				err = h.updateQueryClassWithoutTP(id, lastSeen)
+			}
+
+			if err != nil {
+				log.Printf("WARNING: cannot update query class, skipping: %s: %#v: %s", err, class, trace)
+				continue
 			}
 		}
 
@@ -359,12 +370,18 @@ func (h *MySQLMetricWriter) updateQueryClassWithoutTP(queryClassId uint, lastSee
 	return mysql.Error(err, "updateQueryClassWithoutTP UPDATE query_classes")
 }
 
-func (h *MySQLMetricWriter) updateQueryExample(instanceId uint, class *qan.Class, classId uint, lastSeen string) error {
+func (h *MySQLMetricWriter) updateQueryExample(instanceId uint, class *qan.Class, classId uint, lastSeen string) (int64, int64, error) {
+	var lastInsertId, rowsAffected int64
+
 	// INSERT ON DUPLICATE KEY UPDATE
 	t := time.Now()
-	_, err := h.stmtInsertQueryExample.Exec(instanceId, classId, lastSeen, lastSeen, class.Example.Db, class.Example.QueryTime, class.Example.Query, class.Example.Explain)
+	res, err := h.stmtInsertQueryExample.Exec(instanceId, classId, lastSeen, lastSeen, class.Example.Db, class.Example.QueryTime, class.Example.Query, class.Example.Explain)
+	if err == nil {
+		lastInsertId, _ = res.LastInsertId()
+		rowsAffected, _ = res.RowsAffected()
+	}
 	h.stats.TimingDuration(h.stats.System("update-query-example"), time.Now().Sub(t), h.stats.SampleRate)
-	return mysql.Error(err, "updateQueryExample INSERT query_examples")
+	return lastInsertId, rowsAffected, mysql.Error(err, "updateQueryExample INSERT query_examples")
 }
 
 func (h *MySQLMetricWriter) getMetricValues(e *qan.Metrics) []interface{} {
@@ -487,8 +504,8 @@ func (h *MySQLMetricWriter) prepareStatements() {
 			" ON DUPLICATE KEY UPDATE" +
 			" query=IF(VALUES(Query_time) > COALESCE(Query_time, 0), VALUES(query), query)," +
 			" ts=IF(VALUES(Query_time) > COALESCE(Query_time, 0), VALUES(ts), ts)," +
-			" Query_time=IF(VALUES(Query_time) > COALESCE(Query_time, 0), VALUES(Query_time), Query_time)," +
-			" db=IF(VALUES(Query_time) > COALESCE(Query_time, 0), VALUES(db), db)")
+			" db=IF(VALUES(Query_time) > COALESCE(Query_time, 0), VALUES(db), db)," +
+			" Query_time=IF(VALUES(Query_time) > COALESCE(Query_time, 0), VALUES(Query_time), Query_time)")
 	if err != nil {
 		panic("Failed to prepare stmtInsertQueryExample: " + err.Error())
 	}
