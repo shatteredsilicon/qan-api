@@ -20,6 +20,7 @@ package instance
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	mysqlDriver "github.com/go-sql-driver/mysql"
@@ -86,9 +87,15 @@ func (h *MySQLHandler) Create(in proto.Instance) (uint, error) {
 		return 0, err
 	}
 
+	columns := []string{"subsystem_id", "parent_uuid", "uuid", "dsn", "name", "distro", "version"}
+	args := []interface{}{subsys.Id, in.ParentUUID, in.UUID, dsn, in.Name, in.Distro, in.Version}
+	if !in.Deleted.IsZero() {
+		columns = append(columns, "deleted")
+		args = append(args, in.Deleted)
+	}
+
 	res, err := h.dbm.DB().Exec(
-		"INSERT INTO instances (subsystem_id, parent_uuid, uuid, dsn, name, distro, version) VALUES (?, ?, ?, ?, ?, ?, ?)",
-		subsys.Id, in.ParentUUID, in.UUID, dsn, in.Name, in.Distro, in.Version)
+		fmt.Sprintf("INSERT INTO instances (%s) VALUES (?%s)", strings.Join(columns, ", "), strings.Repeat(", ?", len(columns)-1)), args...)
 	if err != nil {
 		return 0, mysql.Error(err, "MySQLHandlerCreate INSERT instances")
 	}
