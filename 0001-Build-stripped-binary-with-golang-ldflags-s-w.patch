@@ -1,0 +1,26 @@
+From 1a1ef232e1a6137345a905cc1a5f58daa4e7c021 Mon Sep 17 00:00:00 2001
+From: Jason <oblitorum@gmail.com>
+Date: Mon, 25 Sep 2023 01:47:11 +0800
+Subject: [PATCH] Build stripped binary with golang ldflags '-s -w'
+
+---
+ harness/build.go | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/harness/build.go b/harness/build.go
+index dee325a..8704033 100755
+--- a/harness/build.go
++++ b/harness/build.go
+@@ -89,8 +89,7 @@ func Build(buildFlags ...string) (app *App, compileError *revel.Error) {
+ 
+ 		flags := []string{
+ 			"build",
+-			"-i",
+-			"-ldflags", versionLinkerFlags,
++			"-ldflags", "-s -w " + versionLinkerFlags,
+ 			"-tags", buildTags,
+ 			"-o", binName}
+ 
+-- 
+2.25.1
+

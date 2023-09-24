@@ -52,6 +52,11 @@ cp -r $(go env GOROOT) ${HOME}/goroot
 export GOROOT=${HOME}/goroot
 export GOPATH=${HOME}/go
 export APP_VERSION="%{version}"
+
+pushd ${GOPATH}/src/%{provider_prefix}/vendor/github.com/revel/cmd/
+    patch -p1 < ${GOPATH}/src/%{provider_prefix}/0001-Build-stripped-binary-with-golang-ldflags-s-w.patch
+popd
+
 GO111MODULE=off go build -o ./revel ${GOPATH}/src/%{provider_prefix}/vendor/github.com/revel/cmd/revel
 GO111MODULE=off ./revel build %{provider_prefix} release prod
 rm -rf release/src/github.com/shatteredsilicon/qan-api
