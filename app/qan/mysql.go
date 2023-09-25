@@ -100,6 +100,30 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 	h.stats.SetComponent("db")
 	t := time.Now()
 
+	handleClass := func(id uint, class *qp.Class, lastSeen string) (uint, int64, int64, error) {
+		if id == 0 {
+			// New class, create it.
+			id, err = h.newClass(instanceId, in.Subsystem, class, lastSeen)
+			if err != nil {
+				log.Printf("WARNING: cannot create new query class, skipping: %s: %#v: %s", err, class, trace)
+				return 0, 0, 0, err
+			}
+		}
+
+		// Update query example if this example has a greater Query_time.
+		// The "!= nil" is for agent >= v1.0.11 which use *event.Class.Example,
+		// but agent <= v1.0.10 don't use a pointer so the struct is always
+		// present, so "class.Example.Query != """ filters out empty examples.
+		var lastExampleId, exampleRowsAffected int64
+		if class.Example != nil && class.Example.Query != "" {
+			if lastExampleId, exampleRowsAffected, err = h.updateQueryExample(instanceId, class, id, lastSeen); err != nil {
+				log.Printf("WARNING: cannot update query example: %s: %#v: %s", err, class, trace)
+			}
+		}
+
+		return id, lastExampleId, exampleRowsAffected, nil
+	}
+
 	// //////////////////////////////////////////////////////////////////////
 	// Insert class metrics into query_class_metrics
 	// //////////////////////////////////////////////////////////////////////
@@ -120,24 +144,11 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 		}
 
 		classExists := id != 0
-		if !classExists {
-			// New class, create it.
-			id, err = h.newClass(instanceId, in.Subsystem, class, lastSeen)
-			if err != nil {
-				log.Printf("WARNING: cannot create new query class, skipping: %s: %#v: %s", err, class, trace)
-				continue
-			}
-		}
-
-		// Update query example if this example has a greater Query_time.
-		// The "!= nil" is for agent >= v1.0.11 which use *event.Class.Example,
-		// but agent <= v1.0.10 don't use a pointer so the struct is always
-		// present, so "class.Example.Query != """ filters out empty examples.
 		var lastExampleId, exampleRowsAffected int64
-		if class.Example != nil && class.Example.Query != "" {
-			if lastExampleId, exampleRowsAffected, err = h.updateQueryExample(instanceId, class, id, lastSeen); err != nil {
-				log.Printf("WARNING: cannot update query example: %s: %#v: %s", err, class, trace)
-			}
+
+		id, lastExampleId, exampleRowsAffected, err = handleClass(id, class, lastSeen)
+		if err != nil {
+			continue
 		}
 
 		if classExists {
@@ -162,7 +173,15 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 				err = h.updateQueryClassWithoutTP(id, lastSeen)
 			}
 
-			if err != nil {
+			// it existed previously but non-exist now, could be just deleted
+			// by another process (most likely the auto-purge process), we re-create
+			// it in this case
+			if err == shared.ErrNotFound {
+				id, _, _, err = handleClass(0, class, lastSeen)
+				if err != nil {
+					continue
+				}
+			} else if err != nil {
 				log.Printf("WARNING: cannot update query class, skipping: %s: %#v: %s", err, class, trace)
 				continue
 			}
