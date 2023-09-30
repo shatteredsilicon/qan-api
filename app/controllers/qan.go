@@ -39,7 +39,7 @@ func (c QAN) Profile(uuid string) revel.Result {
 	instanceId := c.Args["instanceId"].(uint)
 
 	// Convert and validate the time range.
-	var beginTs, endTs, search, searchB64 string
+	var beginTs, endTs, search, searchB64, sortBy string
 	var offset int
 	var firstSeen bool
 	c.Params.Bind(&beginTs, "begin")
@@ -47,6 +47,7 @@ func (c QAN) Profile(uuid string) revel.Result {
 	c.Params.Bind(&searchB64, "search")
 	c.Params.Bind(&offset, "offset")
 	c.Params.Bind(&firstSeen, "first_seen")
+	c.Params.Bind(&sortBy, "sort_by")
 	searchB, err := base64.StdEncoding.DecodeString(searchB64)
 	if err != nil {
 		fmt.Println("error decoding base64 search :", err)
@@ -70,7 +71,7 @@ func (c QAN) Profile(uuid string) revel.Result {
 	if err := dbm.Open(); err != nil {
 		return c.Error(err, "QAN.Profile: dbm.Open")
 	}
-	profile, err := models.Report.Profile(instanceId, begin, end, r, offset, search, firstSeen)
+	profile, err := models.Report.Profile(instanceId, begin, end, r, offset, search, firstSeen, sortBy)
 	if err != nil {
 		return c.Error(err, "qh.Profile")
 	}

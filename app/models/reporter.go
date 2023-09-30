@@ -214,11 +214,13 @@ const queryReportTemplate = `
 		{{ if .FirstSeen }} AND qc.first_seen >= :begin {{ end }}
 		{{ if .Keyword }} AND (qc.checksum = :keyword OR qc.abstract LIKE :start_keyword OR qc.fingerprint LIKE :start_keyword) {{ end }}
 	GROUP BY qcm.query_class_id
-	ORDER BY SUM(qcm.Query_time_sum) DESC
+	{{ if eq .SortBy "latency" }} ORDER BY SUM(qcm.Query_time_sum)/SUM(qcm.query_count) DESC
+	{{ else if eq .SortBy "count" }} ORDER BY SUM(qcm.query_count) DESC
+	{{ else }} ORDER BY SUM(qcm.Query_time_sum) DESC {{ end }}
 	LIMIT :limit OFFSET :offset;
 `
 
-func (r report) Profile(instanceID uint, begin, end time.Time, rank RankBy, offset int, search string, firstSeen bool) (Profile, error) {
+func (r report) Profile(instanceID uint, begin, end time.Time, rank RankBy, offset int, search string, firstSeen bool, sortBy string) (Profile, error) {
 	args := struct {
 		InstanceID   uint `db:"instance_id"`
 		Begin        time.Time
@@ -228,6 +230,7 @@ func (r report) Profile(instanceID uint, begin, end time.Time, rank RankBy, offs
 		Keyword      string `db:"keyword"`
 		StartKeyword string `db:"start_keyword"`
 		FirstSeen    bool
+		SortBy       string
 	}{
 		InstanceID:   instanceID,
 		Begin:        begin,
@@ -237,6 +240,7 @@ func (r report) Profile(instanceID uint, begin, end time.Time, rank RankBy, offs
 		Keyword:      search,
 		StartKeyword: search + "%",
 		FirstSeen:    firstSeen,
+		SortBy:       sortBy,
 	}
 	p := Profile{
 		// caller sets InstanceId (MySQL instance UUID)
