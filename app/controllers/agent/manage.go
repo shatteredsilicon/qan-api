@@ -89,13 +89,22 @@ func (c Agent) SendCmd(uuid string) revel.Result {
 	}{}
 
 	if reply.Cmd == "Explain" {
-		reply.Data, err = addVisualExplain(reply.Data)
-		if err != nil {
-			reply.Error = fmt.Sprintf("cannot do visual explain: %s", err.Error())
+		if data, err := addVisualExplain(reply.Data); err != nil {
+			errorBytes, _ := json.Marshal(struct {
+				Type    string
+				Message string
+			}{
+				Type:    "visual",
+				Message: fmt.Sprintf("cannot do visual explain: %s", err.Error()),
+			})
+			reply.Error = string(errorBytes)
+		} else {
+			reply.Data = data
 		}
 	}
+
 	err = json.Unmarshal(reply.Data, &dst)
-	if dst.Filename != "" {
+	if err == nil && dst.Filename != "" {
 		err := c.writeResponseFile(dst.Filename, dst.Data)
 		// Don't send the data to the UI
 		dst.Data = []byte{}
@@ -168,7 +177,7 @@ func addVisualExplain(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot execute pt-visual-explain: %s", err.Error())
 	}
-	explains.Visual = fmt.Sprintf("%s", out)
+	explains.Visual = string(out)
 	return json.Marshal(explains)
 }
 
