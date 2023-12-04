@@ -396,7 +396,8 @@ CREATE TABLE IF NOT EXISTS query_class_metrics (
   No_good_index_used_sum        BIGINT UNSIGNED,
   --
   PRIMARY KEY (query_class_id, instance_id, start_ts),
-  INDEX (start_ts)
+  INDEX (start_ts),
+  INDEX instance_start (instance_id, start_ts)
 )
   PAGE_COMPRESSED=1;
 
