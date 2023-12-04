@@ -400,7 +400,3 @@ CREATE TABLE IF NOT EXISTS query_class_metrics (
   INDEX instance_start (instance_id, start_ts)
 )
   PAGE_COMPRESSED=1;
-
-ALTER TABLE `query_classes` ADD COLUMN IF NOT EXISTS `procedures` TEXT DEFAULT NULL;
-
-ALTER TABLE `query_examples` ADD COLUMN IF NOT EXISTS `explain` TEXT DEFAULT NULL;
