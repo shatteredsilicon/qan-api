@@ -12,7 +12,6 @@ POST	/instances		Instance.Create
 GET	/instances/:uuid	Instance.Get
 PUT	/instances/:uuid	Instance.Update
 DELETE	/instances/:uuid	Instance.Delete
-DELETE  /instances/:uuid/data   Instance.DeleteData    
 
 # ###########################################################################
 # Agent

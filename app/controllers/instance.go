@@ -175,17 +175,3 @@ func (c *Instance) Delete(uuid string) revel.Result {
 
 	return c.RenderNoContent()
 }
-
-// DeleteData DELETE /instances/:uuid/data
-func (c *Instance) DeleteData(uuid string) revel.Result {
-	dbm := c.Args["dbm"].(db.Manager)
-
-	if err := dbm.Open(); err != nil {
-		return c.Error(err, "Instance.DeleteData: dbm.Open")
-	}
-	ih := instance.NewMySQLHandler(dbm)
-	if err := ih.DeleteData(uuid); err != nil {
-		return c.Error(err, "Instance.DeleteData: ih.Delete")
-	}
-	return c.RenderNoContent()
-}
