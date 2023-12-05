@@ -46,13 +46,21 @@ import (
 )
 
 // AppVersion is set from linker flags set by revel/cmd:
-//   https://github.com/revel/cmd/blob/97ec1422620f1a83cd13738708a109fe092364ca/harness/build.go#L132
+//
+//	https://github.com/revel/cmd/blob/97ec1422620f1a83cd13738708a109fe092364ca/harness/build.go#L132
+//
 // The value for this variable is taken from os environment variable `APP_VERSION`:
-//   https://github.com/revel/cmd/blob/97ec1422620f1a83cd13738708a109fe092364ca/harness/build.go#L212
+//
+//	https://github.com/revel/cmd/blob/97ec1422620f1a83cd13738708a109fe092364ca/harness/build.go#L212
+//
 // The value of `APP_VERSION` environment variable is set during package build:
-//   https://github.com/shatteredsilicon/ssm-server-packaging/blob/611b8a2e372c9a399cedf2371157e78c3efa7bc8/rhel/SPECS/percona-qan-api.spec#L50
+//
+//	https://github.com/shatteredsilicon/ssm-server-packaging/blob/611b8a2e372c9a399cedf2371157e78c3efa7bc8/rhel/SPECS/percona-qan-api.spec#L50
+//
 // The variable is used to create `X-Percona-QAN-API-Version` header, and it's important for pmm-client:
-//   https://github.com/shatteredsilicon/ssm-client/blob/9420a44412f82d2e05f1e263492ca9a23345a55f/pmm/check_network.go#L43
+//
+//	https://github.com/shatteredsilicon/ssm-client/blob/9420a44412f82d2e05f1e263492ca9a23345a55f/pmm/check_network.go#L43
+//
 // Do not set this var.
 var AppVersion = ""
 
@@ -111,6 +119,9 @@ func init() {
 
 	shared.TableParser = queryService.NewMini("") // only tables
 	go shared.TableParser.Run()
+
+	shared.InstanceTasks = instance.NewTasker(10)
+	go shared.InstanceTasks.Run()
 
 	revel.Filters = []revel.Filter{
 		revel.PanicFilter,             // Recover from panics and display an error page instead.
