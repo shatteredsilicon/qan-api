@@ -31,6 +31,7 @@ var InternalStats stats.Stats = stats.NewStats(&statsd.NoopClient{}, "", "", "",
 var RouteStats stats.Stats = stats.NewStats(&statsd.NoopClient{}, "", "", "", "0")
 var QueryAbstracter *query.Mini
 var TableParser *query.Mini
+var InstanceTasks InstanceTasker
 
 // An AgentCommunicator sends proto.Cmd to a agent, handling concurrency and
 // hiding whether the agent is local or remote.
@@ -48,4 +49,15 @@ type AgentFinder interface {
 	Remove(agentId uint)
 	Get(agentId uint) AgentCommunicator
 	Refresh(timeLimit time.Duration)
+}
+
+type InstanceTask int
+
+const (
+	TypeInstanceTaskDelete InstanceTask = iota
+)
+
+type InstanceTasker interface {
+	Add(t InstanceTask, data interface{})
+	Run()
 }

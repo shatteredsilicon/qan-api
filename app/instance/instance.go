@@ -264,7 +264,7 @@ JOIN instances i ON qcm.instance_id = i.instance_id
 WHERE i.uuid = ?
 `, uuid)
 	if err != nil {
-		return mysql.Error(err, "MySQLHandler.Delete DELETE query_class_metrics")
+		return mysql.Error(err, "MySQLHandler.DeleteData DELETE query_class_metrics")
 	}
 
 	// clear query_examples table
@@ -275,7 +275,7 @@ JOIN instances i ON qe.instance_id = i.instance_id
 WHERE i.uuid = ?
 `, uuid)
 	if err != nil {
-		return mysql.Error(err, "MySQLHandler.Delete DELETE query_examples")
+		return mysql.Error(err, "MySQLHandler.DeleteData DELETE query_examples")
 	}
 
 	// clear query_global_metrics table
@@ -285,5 +285,20 @@ FROM query_global_metrics qgm
 JOIN instances i ON qgm.instance_id = i.instance_id
 WHERE i.uuid = ?
 `, uuid)
-	return mysql.Error(err, "MySQLHandler.Delete DELETE query_global_metrics")
+	if err != nil {
+		return mysql.Error(err, "MySQLHandler.DeleteData DELETE query_global_metrics")
+	}
+
+	// clear agent_configs table data
+	_, err = h.dbm.DB().Exec(`
+DELETE ac
+FROM agent_configs ac
+JOIN instances i ON ac.other_instance_id = i.instance_id
+WHERE i.uuid = ?
+`, uuid)
+	if err != nil {
+		return mysql.Error(err, "MySQLHandler.DeleteData DELETE agent_configs")
+	}
+
+	return nil
 }

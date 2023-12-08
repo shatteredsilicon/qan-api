@@ -165,23 +165,13 @@ func (c *Instance) Delete(uuid string) revel.Result {
 	if err := dbm.Open(); err != nil {
 		return c.Error(err, "Instance.Delete: dbm.Open")
 	}
+
 	ih := instance.NewMySQLHandler(dbm)
 	if err := ih.Delete(uuid); err != nil {
 		return c.Error(err, "Instance.Delete: ih.Delete")
 	}
-	return c.RenderNoContent()
-}
 
-// DeleteData DELETE /instances/:uuid/data
-func (c *Instance) DeleteData(uuid string) revel.Result {
-	dbm := c.Args["dbm"].(db.Manager)
+	shared.InstanceTasks.Add(shared.TypeInstanceTaskDelete, uuid)
 
-	if err := dbm.Open(); err != nil {
-		return c.Error(err, "Instance.DeleteData: dbm.Open")
-	}
-	ih := instance.NewMySQLHandler(dbm)
-	if err := ih.DeleteData(uuid); err != nil {
-		return c.Error(err, "Instance.DeleteData: ih.Delete")
-	}
 	return c.RenderNoContent()
 }
