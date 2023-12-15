@@ -170,7 +170,7 @@ func (c QAN) Config(uuid string) revel.Result {
 		return c.Error(err, "config.MySQLHandler.GetQAN")
 	}
 	if len(configs) == 0 {
-		return c.NotFound("")
+		return c.Error(shared.ErrNotFound, "")
 	}
 	if len(configs) > 1 {
 		return c.Error(fmt.Errorf("got %d QAN configs, expected 1", len(configs)), "QAN.Config")
