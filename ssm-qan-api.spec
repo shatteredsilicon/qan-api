@@ -18,7 +18,7 @@ Summary:	Query Analytics API for SSM
 
 License:	AGPLv3
 URL:		https://%{provider_prefix}
-Source0:	%{name}-%{version}.tar.gz
+Source0:	%{name}-%{version}-%{release}.tar.gz
 Source1:    https://github.com/percona-lab/revel-cmd/archive/v%{revel_cmd_version}/revel-cmd-v%{revel_cmd_version}.tar.gz
 
 BuildRequires:	golang
