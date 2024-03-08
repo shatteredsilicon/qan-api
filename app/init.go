@@ -258,26 +258,37 @@ func authAgent(c *revel.Controller) revel.Result {
 }
 
 func getInstanceId(c *revel.Controller) revel.Result {
-	// Get the internal (auto-inc) instance ID of the UUID.
+	// Get the internal (auto-inc) instance ID(s) of the UUID.
 	var uuid string
+	var uuids []string
 	c.Params.Bind(&uuid, "uuid")
+	c.Params.Bind(&uuids, "uuids")
+	if uuid != "" {
+		uuids = []string{uuid}
+	}
+	if len(uuids) == 0 {
+		c.Response.Status = http.StatusBadRequest
+		return c.RenderText("")
+	}
 
 	dbm := c.Args["dbm"].(db.Manager)
 	if err := dbm.Open(); err != nil {
 		return internalError(c, "init.getInstanceId: dbm.Open", err)
 	}
 
-	instanceId, err := instance.GetInstanceId(dbm.DB(), uuid)
+	instanceIds, err := instance.GetInstanceIds(dbm.DB(), uuids)
 	if err != nil {
-		switch err {
-		case shared.ErrNotFound:
-			c.Response.Status = http.StatusNotFound
-			return c.RenderText("")
-		default:
-			return internalError(c, "init.getInstanceId: ih.GetInstanceId", err)
-		}
+		return internalError(c, "init.getInstanceId: ih.GetInstanceIds", err)
 	}
-	c.Args["instanceId"] = instanceId
+	if len(instanceIds) == 0 {
+		c.Response.Status = http.StatusNotFound
+		return c.RenderText("")
+	}
+
+	c.Args["instanceIds"] = instanceIds
+	if uuid != "" {
+		c.Args["instanceId"] = instanceIds[0]
+	}
 
 	return nil // success
 }

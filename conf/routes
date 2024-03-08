@@ -53,3 +53,6 @@ GET	/qan/profile/:uuid			QAN.Profile
 GET	/qan/report/:uuid/server-summary        QAN.ServerSummary
 GET	/qan/report/:uuid/query/:queryId	QAN.QueryReport
 GET	/qan/config/:uuid			QAN.Config
+GET /qan/query/:queryId/report  QAN.QueryReport
+GET /qan/server-summary/report  QAN.ServerSummary
+GET /qan/profile    QAN.Profile

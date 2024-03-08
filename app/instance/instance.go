@@ -52,6 +52,36 @@ func GetInstanceId(db *sql.DB, uuid string) (uint, error) {
 	return instanceId, nil
 }
 
+func GetInstanceIds(db *sql.DB, uuids []string) ([]uint, error) {
+	var instanceIds []uint
+
+	if len(uuids) == 0 {
+		return []uint{}, nil
+	}
+
+	placeholders := "?" + strings.Repeat(",?", len(uuids)-1)
+	values := make([]interface{}, len(uuids))
+	for i := range uuids {
+		values[i] = uuids[i]
+	}
+	rows, err := db.Query(fmt.Sprintf("SELECT instance_id FROM instances WHERE uuid IN (%s)", placeholders), values...)
+	if err != nil {
+		return []uint{}, mysql.Error(err, "SELECT instances")
+	}
+	defer rows.Close()
+
+	var instanceId uint
+	for rows.Next() {
+		err = rows.Scan(&instanceId)
+		if err != nil {
+			return []uint{}, mysql.Error(err, "SELECT instances")
+		}
+		instanceIds = append(instanceIds, instanceId)
+	}
+
+	return instanceIds, nil
+}
+
 // --------------------------------------------------------------------------
 
 type MySQLHandler struct {
