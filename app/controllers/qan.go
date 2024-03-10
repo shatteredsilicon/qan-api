@@ -35,8 +35,8 @@ type QAN struct {
 	BackEnd
 }
 
-func (c QAN) Profile(uuid string) revel.Result {
-	instanceId := c.Args["instanceId"].(uint)
+func (c QAN) Profile() revel.Result {
+	instanceIds := c.Args["instanceIds"].([]uint)
 
 	// Convert and validate the time range.
 	var beginTs, endTs, search, searchB64, sortBy string
@@ -71,7 +71,7 @@ func (c QAN) Profile(uuid string) revel.Result {
 	if err := dbm.Open(); err != nil {
 		return c.Error(err, "QAN.Profile: dbm.Open")
 	}
-	profile, err := models.Report.Profile(instanceId, begin, end, r, offset, search, firstSeen, sortBy)
+	profile, err := models.Report.Profile(instanceIds, begin, end, r, offset, search, firstSeen, sortBy)
 	if err != nil {
 		return c.Error(err, "qh.Profile")
 	}
@@ -79,8 +79,8 @@ func (c QAN) Profile(uuid string) revel.Result {
 	return c.RenderJSON(profile)
 }
 
-func (c QAN) QueryReport(uuid, queryId string) revel.Result {
-	instanceId := c.Args["instanceId"].(uint)
+func (c QAN) QueryReport(queryId string) revel.Result {
+	instanceIds := c.Args["instanceIds"].([]uint)
 
 	// Convert and validate the time range.
 	var beginTs, endTs string
@@ -110,7 +110,7 @@ func (c QAN) QueryReport(uuid, queryId string) revel.Result {
 		return c.Error(err, "qh.GetQueryId")
 	}
 
-	s, err := qh.Example(classId, instanceId, end)
+	s, err := qh.Example(classId, instanceIds, end)
 	if err != nil && err != shared.ErrNotFound {
 		return c.Error(err, "qh.Example")
 	}
@@ -119,14 +119,14 @@ func (c QAN) QueryReport(uuid, queryId string) revel.Result {
 	// already knows what query and time range it requested, but it makes
 	// the report stateless in case the caller passes the data to other code.
 	report := qp.QueryReport{
-		InstanceId: uuid,
+		InstanceId: s.InstanceUUID,
 		Begin:      begin,
 		End:        end,
 		Query:      q,
 		Example:    s,
 	}
 
-	metrics2, sparks2 := models.Metrics.GetClassMetrics(classId, instanceId, begin, end)
+	metrics2, sparks2 := models.Metrics.GetClassMetrics(classId, instanceIds, begin, end)
 	report.Metrics2 = metrics2
 	report.Sparks2 = sparks2
 
@@ -134,7 +134,7 @@ func (c QAN) QueryReport(uuid, queryId string) revel.Result {
 }
 
 func (c QAN) ServerSummary(uuid string) revel.Result {
-	instanceId := c.Args["instanceId"].(uint)
+	instanceIds := c.Args["instanceIds"].([]uint)
 
 	// Convert and validate the time range.
 	var beginTs, endTs string
@@ -155,7 +155,7 @@ func (c QAN) ServerSummary(uuid string) revel.Result {
 		End:        end,
 	}
 
-	metrics2, sparks2 := models.Metrics.GetGlobalMetrics(instanceId, begin, end)
+	metrics2, sparks2 := models.Metrics.GetGlobalMetrics(instanceIds, begin, end)
 	summary.Metrics2 = metrics2
 	summary.Sparks2 = sparks2
 

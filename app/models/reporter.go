@@ -19,7 +19,9 @@ package models
 
 import (
 	"bytes"
+	"fmt"
 	"log"
+	"strings"
 	"text/template"
 	"time"
 
@@ -87,45 +89,59 @@ type Stats struct {
 }
 
 // get data for spark-lines at query profile
-const sparkLinesQueryClass = `
+const sparkLinesQueryClassTemplate = `
 	SELECT (:end_ts - UNIX_TIMESTAMP(start_ts)) DIV :interval_ts AS Point,
 	FROM_UNIXTIME(:end_ts - (SELECT point) * :interval_ts) AS Start_ts,
 	COALESCE(SUM(query_count), 0) AS Query_count,
 	COALESCE(SUM(Query_time_sum)/:interval_ts, 0) AS Query_load,
 	COALESCE(AVG(Query_time_avg), 0) AS Query_time_avg
 	FROM query_class_metrics
-	WHERE query_class_id = :query_class_id AND instance_id = :instance_id AND (start_ts >= :begin AND start_ts < :end) GROUP BY point;
+	WHERE query_class_id = :query_class_id AND instance_id IN ({{ .InstanceIDs }}) AND (start_ts >= :begin AND start_ts < :end) GROUP BY point;
 	`
 
-const sparkLinesQueryGlobal = `
+const sparkLinesQueryGlobalTemplate = `
 	SELECT (:end_ts - UNIX_TIMESTAMP(start_ts)) DIV :interval_ts AS Point,
 	FROM_UNIXTIME(:end_ts - (SELECT point) * :interval_ts) AS Start_ts,
 	COALESCE(SUM(total_query_count), 0) AS Query_count,
 	COALESCE(SUM(Query_time_sum)/:interval_ts, 0) AS Query_load,
 	COALESCE(AVG(Query_time_avg), 0) AS Query_time_avg
 	FROM query_global_metrics
-	WHERE instance_id = :instance_id AND (start_ts >= :begin AND start_ts < :end) GROUP BY point;
+	WHERE instance_id IN ({{ .InstanceIDs }}) AND (start_ts >= :begin AND start_ts < :end) GROUP BY point;
 	`
 
 // get data for spark-lines at query profile
-func (r report) SparklineData(endTs int64, intervalTs int64, queryClassID uint, instanceID uint, begin, end time.Time) []QueryLog {
+func (r report) SparklineData(endTs int64, intervalTs int64, queryClassID uint, instanceIDs string, begin, end time.Time) []QueryLog {
 
 	queryLogArrRaw := make(map[int64]QueryLog)
 	queryLogArr := []QueryLog{}
 
 	args := struct {
-		EndTS        int64     `db:"end_ts"`
-		IntervalTS   int64     `db:"interval_ts"`
-		QueryClassID uint      `db:"query_class_id"`
-		InstanceID   uint      `db:"instance_id"`
+		EndTS        int64 `db:"end_ts"`
+		IntervalTS   int64 `db:"interval_ts"`
+		QueryClassID uint  `db:"query_class_id"`
+		InstanceIDs  string
 		Begin        time.Time `db:"begin"`
 		End          time.Time `db:"end"`
-	}{endTs, intervalTs, queryClassID, instanceID, begin, end}
+	}{endTs, intervalTs, queryClassID, instanceIDs, begin, end}
 
-	query := sparkLinesQueryClass
+	var sparkLinesQueryClassBuffer bytes.Buffer
+	if tmpl, err := template.New("sparkLinesQueryClassSQL").Parse(sparkLinesQueryClassTemplate); err != nil {
+		log.Fatalln(err)
+	} else if err = tmpl.Execute(&sparkLinesQueryClassBuffer, args); err != nil {
+		log.Fatalln(err)
+	}
+
+	var sparkLinesQueryGlobalBuffer bytes.Buffer
+	if tmpl, err := template.New("sparkLinesQueryGlobalSQL").Parse(sparkLinesQueryGlobalTemplate); err != nil {
+		log.Fatalln(err)
+	} else if err = tmpl.Execute(&sparkLinesQueryGlobalBuffer, args); err != nil {
+		log.Fatalln(err)
+	}
+
+	query := sparkLinesQueryClassBuffer.String()
 	// if for sparklines for total
 	if queryClassID == 0 {
-		query = sparkLinesQueryGlobal
+		query = sparkLinesQueryGlobalBuffer.String()
 	}
 
 	ql := []QueryLog{}
@@ -175,12 +191,12 @@ const queryReportCountUniqueTemplate = `
 		COUNT(DISTINCT qcm.query_class_id)
 	FROM query_class_metrics AS qcm
 	JOIN query_classes AS qc ON qcm.query_class_id = qc.query_class_id
-	WHERE qcm.instance_id = :instance_id AND (qcm.start_ts >= :begin AND qcm.start_ts < :end)
+	WHERE qcm.instance_id IN ({{ .InstanceIDs }}) AND (qcm.start_ts >= :begin AND qcm.start_ts < :end)
 		{{ if .FirstSeen }} AND qc.first_seen >= :begin {{ end }}
 		{{ if .Keyword }} AND (qc.checksum = :keyword OR qc.abstract LIKE :start_keyword OR qc.fingerprint LIKE :start_keyword) {{ end }};
 `
 
-const queryReportTotal = `
+const queryReportTotalTemplate = `
 	SELECT
 		COALESCE(SUM(TIMESTAMPDIFF(SECOND, start_ts, end_ts)), 0) AS total_time,
 		COALESCE(SUM(total_query_count), 0) AS query_count,
@@ -191,7 +207,7 @@ const queryReportTotal = `
 		COALESCE(AVG(Query_time_p95), 0) AS query_time_p95,
 		COALESCE(MAX(Query_time_max), 0) AS query_time_max
 	FROM query_global_metrics
-	WHERE instance_id = :instance_id AND start_ts BETWEEN :begin AND :end
+	WHERE instance_id IN ({{ .InstanceIDs }}) AND start_ts BETWEEN :begin AND :end
 `
 
 const queryReportTemplate = `
@@ -210,7 +226,7 @@ const queryReportTemplate = `
 		qc.first_seen AS first_seen
 	FROM query_class_metrics AS qcm
 	JOIN query_classes AS qc ON qcm.query_class_id = qc.query_class_id
-	WHERE qcm.instance_id = :instance_id AND (qcm.start_ts >= :begin AND qcm.start_ts < :end)
+	WHERE qcm.instance_id IN ({{ .InstanceIDs }}) AND (qcm.start_ts >= :begin AND qcm.start_ts < :end)
 		{{ if .FirstSeen }} AND qc.first_seen >= :begin {{ end }}
 		{{ if .Keyword }} AND (qc.checksum = :keyword OR qc.abstract LIKE :start_keyword OR qc.fingerprint LIKE :start_keyword) {{ end }}
 	GROUP BY qcm.query_class_id
@@ -220,9 +236,13 @@ const queryReportTemplate = `
 	LIMIT :limit OFFSET :offset;
 `
 
-func (r report) Profile(instanceID uint, begin, end time.Time, rank RankBy, offset int, search string, firstSeen bool, sortBy string) (Profile, error) {
+func (r report) Profile(instanceIDs []uint, begin, end time.Time, rank RankBy, offset int, search string, firstSeen bool, sortBy string) (Profile, error) {
+	instanceIDStrs := make([]string, len(instanceIDs))
+	for i := range instanceIDs {
+		instanceIDStrs[i] = fmt.Sprintf("%d", instanceIDs[i])
+	}
 	args := struct {
-		InstanceID   uint `db:"instance_id"`
+		InstanceIDs  string
 		Begin        time.Time
 		End          time.Time
 		Limit        uint
@@ -232,7 +252,7 @@ func (r report) Profile(instanceID uint, begin, end time.Time, rank RankBy, offs
 		FirstSeen    bool
 		SortBy       string
 	}{
-		InstanceID:   instanceID,
+		InstanceIDs:  strings.Join(instanceIDStrs, ","),
 		Begin:        begin,
 		End:          end,
 		Limit:        rank.Limit,
@@ -277,11 +297,18 @@ func (r report) Profile(instanceID uint, begin, end time.Time, rank RankBy, offs
 		return p, mysql.Error(err, "Reporter.Profile: nstmt.Get: SELECT COUNT(DISTINCT query_class_id)")
 	}
 
+	var queryReportTotalBuffer bytes.Buffer
+	if tmpl, err := template.New("queryReportTotalSQL").Parse(queryReportTotalTemplate); err != nil {
+		log.Fatalln(err)
+	} else if err = tmpl.Execute(&queryReportTotalBuffer, args); err != nil {
+		log.Fatalln(err)
+	}
+
 	totalValues := struct {
 		TotalTime uint `db:"total_time"`
 		Stats
 	}{}
-	nstmtQueryReportTotal, err := db.PrepareNamed(queryReportTotal)
+	nstmtQueryReportTotal, err := db.PrepareNamed(queryReportTotalBuffer.String())
 	if err != nil {
 		return p, mysql.Error(err, "Reporter.Profile: db.PrepareNamed: queryReportTotal")
 	}
@@ -335,7 +362,7 @@ func (r report) Profile(instanceID uint, begin, end time.Time, rank RankBy, offs
 		Stats:      s,
 		QPS:        float64(s.Cnt) / intervalTime,
 		Load:       globalSum / intervalTime,
-		Log:        r.SparklineData(endTs, intervalTs, 0, instanceID, begin, end),
+		Log:        r.SparklineData(endTs, intervalTs, 0, args.InstanceIDs, begin, end),
 	})
 	for i, row := range queriesValues {
 		i++
@@ -350,7 +377,7 @@ func (r report) Profile(instanceID uint, begin, end time.Time, rank RankBy, offs
 			Load:        row.Stats.Sum / intervalTime,
 			Stats:       row.Stats,
 		}
-		qrank.Log = r.SparklineData(endTs, intervalTs, row.QueryClassID, instanceID, begin, end)
+		qrank.Log = r.SparklineData(endTs, intervalTs, row.QueryClassID, args.InstanceIDs, begin, end)
 		p.Query = append(p.Query, qrank)
 	}
 	return p, nil

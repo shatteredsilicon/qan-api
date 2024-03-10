@@ -2,6 +2,7 @@ package models
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"reflect"
 	"strings"
@@ -21,47 +22,54 @@ type metricGroup struct {
 	PerformanceSchema bool `db:"performance_schema"`
 	ServerSummary     bool
 	CountField        string
+	InstanceIDs       string
 }
 
 type args struct {
 	ClassID    uint `db:"class_id"`
-	InstanceID uint `db:"instance_id"`
 	Begin      time.Time
 	End        time.Time
 	EndTS      int64 `db:"end_ts"`
 	IntervalTS int64 `db:"interval_ts"`
 }
 
-const metricGroupQuery = `
+const metricGroupQueryTemplate = `
 SELECT
     IFNULL((SELECT true FROM query_global_metrics
-        WHERE instance_id = :instance_id AND (start_ts >= :begin AND start_ts < :end)
+        WHERE instance_id IN ({{ .InstanceIDs }}) AND (start_ts >= :begin AND start_ts < :end)
         AND Query_time_sum IS NOT NULL
         LIMIT 1), false) AS basic,
     IFNULL((SELECT true FROM query_global_metrics
-        WHERE instance_id = :instance_id AND (start_ts >= :begin AND start_ts < :end)
+        WHERE instance_id IN ({{ .InstanceIDs }}) AND (start_ts >= :begin AND start_ts < :end)
         AND Rows_affected_sum IS NOT NULL
         LIMIT 1), false) AS percona_server,
     IFNULL((SELECT true FROM query_global_metrics
-        WHERE instance_id = :instance_id AND (start_ts >= :begin AND start_ts < :end)
+        WHERE instance_id IN ({{ .InstanceIDs }}) AND (start_ts >= :begin AND start_ts < :end)
         AND Errors_sum IS NOT NULL
         LIMIT 1), false) AS performance_schema;
 `
 
-func (m metrics) identifyMetricGroup(instanceID uint, begin, end time.Time) metricGroup {
+func (m metrics) identifyMetricGroup(instanceIDs []uint, begin, end time.Time) metricGroup {
 	currentMetricGroup := metricGroup{}
 	currentMetricGroup.CountField = "query_count"
-	args := struct {
-		InstanceID uint `db:"instance_id"`
-		Begin      time.Time
-		End        time.Time
-	}{
-		instanceID,
-		begin,
-		end,
+	instanceIDStrs := make([]string, len(instanceIDs))
+	for i := range instanceIDs {
+		instanceIDStrs[i] = fmt.Sprintf("%d", instanceIDs[i])
+	}
+	currentMetricGroup.InstanceIDs = strings.Join(instanceIDStrs, ", ")
+	args := args{
+		Begin: begin,
+		End:   end,
 	}
 
-	if nstmt, err := db.PrepareNamed(metricGroupQuery); err != nil {
+	var metricGroupBuffer bytes.Buffer
+	if tmpl, err := template.New("metricGroupSQL").Parse(metricGroupQueryTemplate); err != nil {
+		log.Fatalln(err)
+	} else if err = tmpl.Execute(&metricGroupBuffer, currentMetricGroup); err != nil {
+		log.Fatalln(err)
+	}
+
+	if nstmt, err := db.PrepareNamed(metricGroupBuffer.String()); err != nil {
 		log.Fatalln(err)
 	} else if err = nstmt.Get(&currentMetricGroup, args); err != nil {
 		log.Fatalln(err)
@@ -78,8 +86,8 @@ type classMetrics struct {
 }
 
 // GetClassMetrics return metrics for given instance and query class
-func (m metrics) GetClassMetrics(classID, instanceID uint, begin, end time.Time) (classMetrics, []rateMetrics) {
-	currentMetricGroup := m.identifyMetricGroup(instanceID, begin, end)
+func (m metrics) GetClassMetrics(classID uint, instanceIDs []uint, begin, end time.Time) (classMetrics, []rateMetrics) {
+	currentMetricGroup := m.identifyMetricGroup(instanceIDs, begin, end)
 	currentMetricGroup.CountField = "query_count"
 
 	intervalTimeMinutes := end.Sub(begin).Minutes()
@@ -91,7 +99,6 @@ func (m metrics) GetClassMetrics(classID, instanceID uint, begin, end time.Time)
 	intervalTs := int64(end.Sub(begin).Seconds()) / amountOfPoints
 	args := args{
 		classID,
-		instanceID,
 		begin,
 		end,
 		endTs,
@@ -126,8 +133,8 @@ type globalMetrics struct {
 }
 
 // GetGlobalMetrics return metrics for given instance
-func (m metrics) GetGlobalMetrics(instanceID uint, begin, end time.Time) (globalMetrics, []rateMetrics) {
-	currentMetricGroup := m.identifyMetricGroup(instanceID, begin, end)
+func (m metrics) GetGlobalMetrics(instanceIDs []uint, begin, end time.Time) (globalMetrics, []rateMetrics) {
+	currentMetricGroup := m.identifyMetricGroup(instanceIDs, begin, end)
 	currentMetricGroup.ServerSummary = true
 	currentMetricGroup.CountField = "total_query_count"
 
@@ -140,7 +147,6 @@ func (m metrics) GetGlobalMetrics(instanceID uint, begin, end time.Time) (global
 	intervalTs := int64(end.Sub(begin).Seconds()) / amountOfPoints
 	args := args{
 		0,
-		instanceID,
 		begin,
 		end,
 		endTs,
@@ -664,7 +670,7 @@ SELECT
 
 FROM {{if .ServerSummary }} query_global_metrics {{ else }} query_class_metrics {{ end }}
 WHERE {{if not .ServerSummary }} query_class_id = :class_id AND {{ end }}
-	 instance_id = :instance_id AND (start_ts >= :begin AND start_ts < :end);
+	 instance_id IN ({{ .InstanceIDs }}) AND (start_ts >= :begin AND start_ts < :end);
 `
 
 const querySparklinesTemplate = `
@@ -722,6 +728,6 @@ SELECT
 {{ end }}
 FROM {{if .ServerSummary }} query_global_metrics {{ else }} query_class_metrics {{ end }}
 WHERE {{if not .ServerSummary }} query_class_id = :class_id AND {{ end }}
-    instance_id = :instance_id AND (start_ts >= :begin AND start_ts < :end)
+    instance_id IN ({{ .InstanceIDs }}) AND (start_ts >= :begin AND start_ts < :end)
 GROUP BY point;
 `
