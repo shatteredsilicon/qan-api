@@ -1256,6 +1256,8 @@ github.com/shatteredsilicon/ssm v0.0.0-20221207190931-98c02733273b h1:gt2eYLcycJ
 github.com/shatteredsilicon/ssm v0.0.0-20221207190931-98c02733273b/go.mod h1:HB+33VUlhN+51gjvrmUXnUUkHkpuPU4ZYfuHHfMN2Wc=
 github.com/shatteredsilicon/ssm v0.0.0-20230510085928-951b746a5271 h1:+FBjTZSfu7J/Qpq9NG2Xc18Z+g1p52/xcX8hSObXvtI=
 github.com/shatteredsilicon/ssm v0.0.0-20230510085928-951b746a5271/go.mod h1:HB+33VUlhN+51gjvrmUXnUUkHkpuPU4ZYfuHHfMN2Wc=
+github.com/shatteredsilicon/ssm v0.0.0-20240311064044-f7a2fdb29abd h1:jTtax7joX0J8ni1SIN+/r66/L5Cd1S9uTASc0u/wL0M=
+github.com/shatteredsilicon/ssm v0.0.0-20240311064044-f7a2fdb29abd/go.mod h1:HB+33VUlhN+51gjvrmUXnUUkHkpuPU4ZYfuHHfMN2Wc=
 github.com/shopspring/decimal v0.0.0-20180709203117-cd690d0c9e24/go.mod h1:M+9NzErvs504Cn4c5DxATwIqPbtswREoFCre64PpcG4=
 github.com/shopspring/decimal v0.0.0-20200227202807-02e2044944cc/go.mod h1:DKyhrW/HYNuLGql+MJL6WCR6knT2jwCFRcu2hWCYk4o=
 github.com/shopspring/decimal v1.2.0/go.mod h1:DKyhrW/HYNuLGql+MJL6WCR6knT2jwCFRcu2hWCYk4o=

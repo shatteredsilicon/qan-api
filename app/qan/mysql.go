@@ -51,6 +51,7 @@ type MySQLMetricWriter struct {
 	stmtInsertGlobalMetrics       *sql.Stmt
 	stmtInsertClassMetrics        *sql.Stmt
 	stmtInsertQueryExample        *sql.Stmt
+	stmtInsertQueryUserSource     *sql.Stmt
 	stmtInsertQueryClass          *sql.Stmt
 	stmtUpdateQueryClass          *sql.Stmt
 	stmtUpdateQueryClassWithoutTP *sql.Stmt
@@ -118,6 +119,12 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 		if class.Example != nil && class.Example.Query != "" {
 			if lastExampleId, exampleRowsAffected, err = h.updateQueryExample(instanceId, class, id, lastSeen); err != nil {
 				log.Printf("WARNING: cannot update query example: %s: %#v: %s", err, class, trace)
+			}
+		}
+
+		for i := range class.UserSources {
+			if err := h.insertUserSource(id, instanceId, class.UserSources[i]); err != nil {
+				log.Printf("WARNING: cannot insert query user source: %s: %#v", err, class.UserSources[i])
 			}
 		}
 
@@ -403,6 +410,11 @@ func (h *MySQLMetricWriter) updateQueryExample(instanceId uint, class *qan.Class
 	return lastInsertId, rowsAffected, mysql.Error(err, "updateQueryExample INSERT query_examples")
 }
 
+func (h *MySQLMetricWriter) insertUserSource(classID, instanceID uint, source qp.UserSource) error {
+	_, err := h.stmtInsertQueryUserSource.Exec(classID, instanceID, time.Unix(0, source.Ts).UTC(), source.User, source.Host)
+	return err
+}
+
 func (h *MySQLMetricWriter) getMetricValues(e *qan.Metrics) []interface{} {
 	t := time.Now()
 	defer func() {
@@ -527,6 +539,14 @@ func (h *MySQLMetricWriter) prepareStatements() {
 			" Query_time=IF(VALUES(Query_time) > COALESCE(Query_time, 0), VALUES(Query_time), Query_time)")
 	if err != nil {
 		panic("Failed to prepare stmtInsertQueryExample: " + err.Error())
+	}
+
+	h.stmtInsertQueryUserSource, err = h.dbm.DB().Prepare(
+		"INSERT INTO query_user_sources" +
+			" (query_class_id, instance_id, ts, user, host)" +
+			" VALUES (?, ?, ?, ?, ?)")
+	if err != nil {
+		panic("Failed to prepare stmtInsertQueryUserSource: " + err.Error())
 	}
 
 	/* Why use LEAST and GREATEST and update first_seen?
