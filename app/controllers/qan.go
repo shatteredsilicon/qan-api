@@ -133,6 +133,37 @@ func (c QAN) QueryReport(queryId string) revel.Result {
 	return c.RenderJSON(report)
 }
 
+func (c QAN) QueryUserSource(queryId string) revel.Result {
+	instanceIds := c.Args["instanceIds"].([]uint)
+
+	// Convert and validate the time range.
+	var beginTs, endTs string
+	c.Params.Bind(&beginTs, "begin")
+	c.Params.Bind(&endTs, "end")
+
+	begin, end, err := shared.ValidateTimeRange(beginTs, endTs)
+	if err != nil {
+		return c.BadRequest(err, "invalid time range")
+	}
+
+	// Get the full query info: abstract, example, first/laset seen, etc.
+	dbm := c.Args["dbm"].(db.Manager)
+	qh := query.NewMySQLHandler(dbm, stats.NullStats())
+
+	// Convert query ID to class ID so we can pull data from other tables.
+	classId, err := query.GetClassId(dbm.DB(), queryId)
+	if err != nil {
+		return c.Error(err, "qh.GetQueryId")
+	}
+
+	userSources, err := qh.UserSources(classId, instanceIds, begin, end)
+	if err != nil && err != shared.ErrNotFound {
+		return c.Error(err, "qh.UserSources")
+	}
+
+	return c.RenderJSON(userSources)
+}
+
 func (c QAN) ServerSummary(uuid string) revel.Result {
 	instanceIds := c.Args["instanceIds"].([]uint)
 

@@ -25,6 +25,7 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
 	"github.com/shatteredsilicon/qan-api/app/db"
 	"github.com/shatteredsilicon/qan-api/app/db/mysql"
 	"github.com/shatteredsilicon/qan-api/app/shared"
@@ -165,6 +166,51 @@ func (h *MySQLHandler) Example(classId uint, instanceIds []uint, period time.Tim
 		return e, mysql.Error(err, "Example: SELECT query_examples")
 	}
 	return e, nil
+}
+
+type UserSource struct {
+	User      string
+	Host      string
+	FirstSeen int64
+	LastSeen  int64
+	Count     uint
+}
+
+func (h *MySQLHandler) UserSources(classId uint, instanceIds []uint, begin, end time.Time) ([]UserSource, error) {
+	query, args, err := sqlx.In(`
+		SELECT user, host, min(ts), max(ts), COUNT(1)
+		FROM query_user_sources
+		WHERE query_class_id = ? AND instance_id IN (?) AND ts >= ? AND ts < ?
+		GROUP BY query_class_id, instance_id, user, host
+	`, classId, instanceIds, begin, end)
+	if err != nil {
+		return nil, mysql.Error(err, "UserSource: sqlx IN")
+	}
+
+	rows, err := h.dbm.DB().Query(query, args...)
+	if err != nil {
+		return nil, mysql.Error(err, "UserSource: SELECT query_user_sources")
+	}
+	defer rows.Close()
+
+	userSources := make([]UserSource, 0)
+	var firstSeen, lastSeen time.Time
+	var user, host string
+	var count uint
+	for rows.Next() {
+		if err := rows.Scan(&user, &host, &firstSeen, &lastSeen, &count); err != nil {
+			return nil, mysql.Error(err, "UserSource: rows.Scan")
+		}
+		userSources = append(userSources, UserSource{
+			User:      user,
+			Host:      host,
+			FirstSeen: firstSeen.UnixNano(),
+			LastSeen:  lastSeen.UnixNano(),
+			Count:     count,
+		})
+	}
+
+	return userSources, nil
 }
 
 func (h *MySQLHandler) UpdateExample(classId, instanceId uint, example queryProto.Example) error {
