@@ -1,5 +1,5 @@
 BUILDDIR	?= /tmp/ssmbuild
-VERSION		?= 9.4.1
+VERSION		?=
 RELEASE		?= 1
 
 ifeq (0, $(shell hash dpkg 2>/dev/null; echo $$?))
@@ -20,7 +20,7 @@ $(TARBALL_FILE):
 
 	GO111MODULE=on go mod vendor
 
-	tar -czf $(TARBALL_FILE) -C $(shell dirname $(CURDIR)) --transform s/^$(shell basename $(CURDIR))/ssm-qan-api/ $(shell basename $(CURDIR))
+	tar --exclude-vcs -czf $(TARBALL_FILE) -C $(shell dirname $(CURDIR)) --transform s/^$(shell basename $(CURDIR))/ssm-qan-api/ $(shell basename $(CURDIR))
 
 .PHONY: srpm
 srpm: $(SRPM_FILE)
