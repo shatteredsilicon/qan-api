@@ -198,11 +198,17 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 		classVals := []interface{}{
 			id,
 			instanceId,
-			report.StartTs,
-			report.EndTs,
+		}
+		if !class.StartAt.IsZero() && !class.EndAt.IsZero() {
+			classVals = append(classVals, class.StartAt, class.EndAt)
+		} else {
+			classVals = append(classVals, report.StartTs, report.EndTs)
+		}
+		classVals = append(
+			classVals,
 			class.TotalQueries,
 			0, // todo: `lrq_count`,
-		}
+		)
 		classVals = append(classVals, vals...)
 
 		// INSERT query_class_metrics
@@ -264,8 +270,14 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 
 	globalVals := []interface{}{
 		instanceId,
-		report.StartTs,
-		report.EndTs,
+	}
+	if !report.Global.StartAt.IsZero() && !report.Global.EndAt.IsZero() {
+		globalVals = append(globalVals, report.Global.StartAt, report.Global.EndAt)
+	} else {
+		globalVals = append(globalVals, report.StartTs, report.EndTs)
+	}
+	globalVals = append(
+		globalVals,
 		report.RunTime,
 		report.Global.TotalQueries,
 		report.Global.UniqueQueries,
@@ -276,7 +288,7 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 		startOffset,
 		endOffset,
 		stopOffset,
-	}
+	)
 
 	globalVals = append(globalVals, vals...)
 	t = time.Now()

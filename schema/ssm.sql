@@ -67,8 +67,8 @@ CREATE TABLE IF NOT EXISTS query_examples (
 
 CREATE TABLE IF NOT EXISTS query_global_metrics (
   instance_id              INT UNSIGNED NOT NULL, -- PK
-  start_ts                 TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,    -- PK
-  end_ts                   TIMESTAMP NOT NULL DEFAULT '1970-01-01 00:00:01',
+  start_ts                 TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),    -- PK
+  end_ts                   TIMESTAMP(6) NOT NULL DEFAULT '1970-01-01 00:00:01',
   run_time                 FLOAT,
   total_query_count        BIGINT UNSIGNED NOT NULL,
   unique_query_count       BIGINT UNSIGNED NOT NULL,  -- number of query classes
@@ -239,8 +239,8 @@ CREATE TABLE IF NOT EXISTS query_global_metrics (
 CREATE TABLE IF NOT EXISTS query_class_metrics (
   query_class_id           INT UNSIGNED NOT NULL, -- PK
   instance_id              INT UNSIGNED NOT NULL, -- PK
-  start_ts                 TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,    -- PK
-  end_ts                   TIMESTAMP NOT NULL DEFAULT '1970-01-01 00:00:01',
+  start_ts                 TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),    -- PK
+  end_ts                   TIMESTAMP(6) NOT NULL DEFAULT '1970-01-01 00:00:01',
   query_count              BIGINT UNSIGNED NOT NULL,
   lrq_count                BIGINT UNSIGNED NOT NULL DEFAULT 0,  -- Low-ranking Queries
   -- Metrics
