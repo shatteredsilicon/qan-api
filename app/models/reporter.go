@@ -277,7 +277,10 @@ func (r report) Profile(instanceIDs []uint, begin, end time.Time, rank RankBy, o
 		amountOfPoints = int64(intervalTimeMinutes)
 	}
 
-	intervalTs := int64(end.Sub(begin).Seconds()) / amountOfPoints
+	var intervalTs int64
+	if amountOfPoints > 0 {
+		intervalTs = int64(end.Sub(begin).Seconds()) / amountOfPoints
+	}
 
 	// get count of all rows - to calculate pagination.
 	var queryReportCountUniqueBuffer bytes.Buffer
@@ -357,13 +360,16 @@ func (r report) Profile(instanceIDs []uint, begin, end time.Time, rank RankBy, o
 		return p, mysql.Error(err, "Reporter.Profile: nstmt.Select: queryReport")
 	}
 
-	p.Query = append(p.Query, QueryRank{
+	qr := QueryRank{
 		Percentage: 1, // 100%
 		Stats:      s,
 		QPS:        float64(s.Cnt) / intervalTime,
 		Load:       globalSum / intervalTime,
-		Log:        r.SparklineData(endTs, intervalTs, 0, args.InstanceIDs, begin, end),
-	})
+	}
+	if intervalTs > 0 {
+		qr.Log = r.SparklineData(endTs, intervalTs, 0, args.InstanceIDs, begin, end)
+	}
+	p.Query = append(p.Query, qr)
 	for i, row := range queriesValues {
 		i++
 		qrank := QueryRank{
@@ -377,7 +383,9 @@ func (r report) Profile(instanceIDs []uint, begin, end time.Time, rank RankBy, o
 			Load:        row.Stats.Sum / intervalTime,
 			Stats:       row.Stats,
 		}
-		qrank.Log = r.SparklineData(endTs, intervalTs, row.QueryClassID, args.InstanceIDs, begin, end)
+		if intervalTs > 0 {
+			qrank.Log = r.SparklineData(endTs, intervalTs, row.QueryClassID, args.InstanceIDs, begin, end)
+		}
 		p.Query = append(p.Query, qrank)
 	}
 	return p, nil
