@@ -52,6 +52,7 @@ type MySQLMetricWriter struct {
 	stmtInsertClassMetrics        *sql.Stmt
 	stmtInsertQueryExample        *sql.Stmt
 	stmtInsertQueryUserSource     *sql.Stmt
+	stmtInsertUserClass           *sql.Stmt
 	stmtInsertQueryClass          *sql.Stmt
 	stmtUpdateQueryClass          *sql.Stmt
 	stmtUpdateQueryClassWithoutTP *sql.Stmt
@@ -68,7 +69,6 @@ func NewMySQLMetricWriter(
 		ih:    ih,
 		m:     m,
 		stats: stats,
-		// --
 	}
 	return h
 }
@@ -411,7 +411,11 @@ func (h *MySQLMetricWriter) updateQueryExample(instanceId uint, class *qan.Class
 }
 
 func (h *MySQLMetricWriter) insertUserSource(classID, instanceID uint, source qp.UserSource) error {
-	_, err := h.stmtInsertQueryUserSource.Exec(classID, instanceID, time.Unix(0, source.Ts).UTC(), source.User, source.Host)
+	if _, err := h.stmtInsertUserClass.Exec(source.User, source.Host); err != nil {
+		return err
+	}
+
+	_, err := h.stmtInsertQueryUserSource.Exec(classID, instanceID, source.User, source.Host, source.Ts, source.Count)
 	return err
 }
 
@@ -541,10 +545,22 @@ func (h *MySQLMetricWriter) prepareStatements() {
 		panic("Failed to prepare stmtInsertQueryExample: " + err.Error())
 	}
 
+	h.stmtInsertUserClass, err = h.dbm.DB().Prepare(
+		"INSERT IGNORE INTO user_classes" +
+			" (user, host)" +
+			" VALUES(?, ?)",
+	)
+	if err != nil {
+		panic("Failed to prepare stmtInsertUserClass: " + err.Error())
+	}
+
 	h.stmtInsertQueryUserSource, err = h.dbm.DB().Prepare(
 		"INSERT INTO query_user_sources" +
-			" (query_class_id, instance_id, ts, user, host)" +
-			" VALUES (?, ?, ?, ?, ?)")
+			" (query_class_id, instance_id, user_class_id, ts, `count`)" +
+			" VALUES (?, ?, (SELECT id FROM user_classes WHERE user = ? AND host = ?), ?, ?)" +
+			" ON DUPLICATE KEY UPDATE" +
+			" `count`=VALUES(`count`)+`count`",
+	)
 	if err != nil {
 		panic("Failed to prepare stmtInsertQueryUserSource: " + err.Error())
 	}
@@ -591,6 +607,8 @@ func (h *MySQLMetricWriter) closeStatements() {
 	h.stmtInsertGlobalMetrics.Close()
 	h.stmtInsertClassMetrics.Close()
 	h.stmtInsertQueryExample.Close()
+	h.stmtInsertQueryUserSource.Close()
+	h.stmtInsertUserClass.Close()
 	h.stmtInsertQueryClass.Close()
 	h.stmtUpdateQueryClass.Close()
 	h.stmtUpdateQueryClassWithoutTP.Close()

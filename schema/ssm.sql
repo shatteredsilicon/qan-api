@@ -401,11 +401,19 @@ CREATE TABLE IF NOT EXISTS query_class_metrics (
 )
   PAGE_COMPRESSED=1;
 
+CREATE TABLE IF NOT EXISTS user_classes (
+  id    INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user  VARCHAR(80) NOT NULL,
+  host  VARCHAR(60) NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY (user, host)
+);
+
 CREATE TABLE IF NOT EXISTS query_user_sources (
   query_class_id  INT UNSIGNED NOT NULL,
   instance_id     INT UNSIGNED NOT NULL,
-  ts              TIMESTAMP(6) NOT NULL,
-  user            VARCHAR(128) CHARSET 'utf8' NOT NULL,
-  host            VARCHAR(255) CHARSET 'utf8' NOT NULL,
-  PRIMARY KEY (query_class_id, instance_id, ts, user, host)
+  user_class_id   INT UNSIGNED NOT NULL,
+  ts              TIMESTAMP NOT NULL,
+  count           INT UNSIGNED NOT NULL,
+  PRIMARY KEY (query_class_id, instance_id, user_class_id, ts)
 );

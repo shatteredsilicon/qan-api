@@ -8,12 +8,11 @@ require (
 	github.com/hashicorp/go-version v1.5.0
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
-	github.com/percona/go-mysql v0.0.0-20180913152646-8863d30f944b
 	github.com/pkg/errors v0.9.1
 	github.com/revel/config v0.14.0
 	github.com/revel/modules v0.14.0
 	github.com/revel/revel v0.14.0
-	github.com/shatteredsilicon/ssm v0.0.0-20240311064044-f7a2fdb29abd
+	github.com/shatteredsilicon/ssm v0.0.0-20240723193942-a060f195308c
 	github.com/stretchr/testify v1.8.0
 	golang.org/x/net v0.2.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
