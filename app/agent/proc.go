@@ -32,7 +32,8 @@ import (
 // parallelizes these internally).
 //
 // [1] Be sure ws.NewConcurrentMultiplexer(..., concurrency=0) in NewLocalAgent()!
-//     Else the multiplexer will call AfterRecv() concurrently.
+//
+//	Else the multiplexer will call AfterRecv() concurrently.
 type Processor struct {
 	agentId uint
 	version proto.Version
@@ -166,6 +167,13 @@ func (p *Processor) updateConfig(change string, cmd *proto.Cmd, reply *proto.Rep
 		runningConfig = reply.Data
 	case "StopTool":
 		otherUUID = string(cmd.Data)
+		cmdData := struct {
+			UUID       string `json:"uuid"`
+			SoftRemove bool   `json:"soft_remove"`
+		}{}
+		if err := json.Unmarshal(cmd.Data, &cmdData); err == nil {
+			otherUUID = cmdData.UUID
+		}
 	}
 
 	switch change {

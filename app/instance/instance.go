@@ -29,13 +29,15 @@ import (
 	"github.com/shatteredsilicon/ssm/proto"
 )
 
+const SSMServerName = "ssm-server"
+
 type DbHandler interface {
 	Create(in proto.Instance) (uint, error)
 	Get(uuid string) (uint, *proto.Instance, error)
 	Update(in proto.Instance) error
 	Delete(uuid string) error
 	DeleteData(uuid string) error
-	GetAll() ([]proto.Instance, error)
+	GetAll(regardInternalData bool) ([]proto.Instance, error)
 }
 
 // --------------------------------------------------------------------------
@@ -163,17 +165,26 @@ func (h *MySQLHandler) GetByName(subsystem, name, parentUUID string) (uint, *pro
 	return h.getInstance(query, s.Id, name)
 }
 
-func (h *MySQLHandler) GetAll() ([]proto.Instance, error) {
-	query := "SELECT subsystem_id, instance_id, parent_uuid, uuid, dsn, name, distro, version, created, deleted" +
+func (h *MySQLHandler) GetAll(regardInternalData bool) ([]proto.Instance, error) {
+	query := "(SELECT subsystem_id, instance_id, parent_uuid, uuid, dsn, name, distro, version, created, deleted" +
 		" FROM instances " +
-		" WHERE deleted IS NULL OR YEAR(deleted)=1970 " +
-		" ORDER BY name"
+		" WHERE deleted IS NULL OR YEAR(deleted)=1970)"
+	if regardInternalData {
+		query += fmt.Sprintf(" UNION (SELECT i.subsystem_id, i.instance_id, i.parent_uuid, i.uuid, i.dsn, i.name, i.distro, i.version, i.created, i.deleted"+
+			" FROM instances i"+
+			" JOIN query_class_metrics qcm ON i.instance_id = qcm.instance_id"+
+			" WHERE i.name = '%s' AND i.subsystem_id = %d"+
+			" LIMIT 1)", SSMServerName, SubsystemMySQL)
+	}
+	query += " ORDER BY name"
+
 	rows, err := h.dbm.DB().Query(query)
 	if err != nil {
 		return nil, mysql.Error(err, "MySQLHandler.GetAll SELECT instances")
 	}
 	defer rows.Close()
 
+	internalAdded := false
 	instances := []proto.Instance{}
 	for rows.Next() {
 		in := proto.Instance{}
@@ -196,6 +207,10 @@ func (h *MySQLHandler) GetAll() ([]proto.Instance, error) {
 			return nil, err
 		}
 
+		if in.Name == SSMServerName && in.Subsystem == SubsystemNameMySQL && internalAdded {
+			continue
+		}
+
 		in.ParentUUID = parentUUID.String
 		in.DSN = dsn.String
 		in.Distro = distro.String
@@ -208,6 +223,9 @@ func (h *MySQLHandler) GetAll() ([]proto.Instance, error) {
 		in.Subsystem = subsystem.Name
 
 		instances = append(instances, in)
+		if in.Name == SSMServerName && in.Subsystem == SubsystemNameMySQL {
+			internalAdded = true
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

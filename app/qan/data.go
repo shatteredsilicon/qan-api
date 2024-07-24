@@ -41,7 +41,7 @@ func SaveData(wsConn ws.Connector, agentId uint, dbh *MySQLMetricWriter, stats *
 	prefix := fmt.Sprintf("[qan.SaveData] agent_id=%d", agentId)
 
 	// get all existing instances
-	instances, err := dbh.ih.GetAll()
+	instances, err := dbh.ih.GetAll(false)
 	if err != nil {
 		return err
 	}
