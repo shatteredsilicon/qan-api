@@ -56,7 +56,7 @@ func (c *Instance) List() revel.Result {
 		}
 		return c.RenderJSON(in)
 	} else {
-		instances, err := instanceHandler.GetAll()
+		instances, err := instanceHandler.GetAll(true)
 		if err != nil {
 			return c.Error(err, "Instance.List: ih.GetAll")
 		}
@@ -167,11 +167,19 @@ func (c *Instance) Delete(uuid string) revel.Result {
 	}
 
 	ih := instance.NewMySQLHandler(dbm)
+
+	_, inst, err := ih.Get(uuid)
+	if err != nil {
+		return c.Error(err, "Instance.Delete: ih.Get")
+	}
+
 	if err := ih.Delete(uuid); err != nil {
 		return c.Error(err, "Instance.Delete: ih.Delete")
 	}
 
-	shared.InstanceTasks.Add(shared.TypeInstanceTaskDelete, uuid)
+	if inst.Name != instance.SSMServerName { // Don't remove qan data of internal instance
+		shared.InstanceTasks.Add(shared.TypeInstanceTaskDelete, uuid)
+	}
 
 	return c.RenderNoContent()
 }
