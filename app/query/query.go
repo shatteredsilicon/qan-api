@@ -178,10 +178,11 @@ type UserSource struct {
 
 func (h *MySQLHandler) UserSources(classId uint, instanceIds []uint, begin, end time.Time) ([]UserSource, error) {
 	query, args, err := sqlx.In(`
-		SELECT user, host, min(ts), max(ts), COUNT(1)
-		FROM query_user_sources
-		WHERE query_class_id = ? AND instance_id IN (?) AND ts >= ? AND ts < ?
-		GROUP BY query_class_id, instance_id, user, host
+		SELECT uc.user, uc.host, min(qus.ts), max(qus.ts), SUM(`+"qus.`count`"+`)
+		FROM query_user_sources qus
+		JOIN user_classes uc ON qus.user_class_id = uc.id
+		WHERE qus.query_class_id = ? AND qus.instance_id IN (?) AND qus.ts >= ? AND qus.ts < ?
+		GROUP BY query_class_id, instance_id, uc.user, uc.host
 	`, classId, instanceIds, begin, end)
 	if err != nil {
 		return nil, mysql.Error(err, "UserSource: sqlx IN")

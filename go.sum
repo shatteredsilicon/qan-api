@@ -1155,8 +1155,6 @@ github.com/patrickmn/go-cache v2.1.0+incompatible/go.mod h1:3Qf8kWWT7OJRJbdiICTK
 github.com/pborman/uuid v1.2.0/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
 github.com/pelletier/go-toml v1.9.3/go.mod h1:u1nR/EPcESfeI/szUZKdtJ0xRNbUoANCkoOuaOx1Y+c=
-github.com/percona/go-mysql v0.0.0-20180913152646-8863d30f944b h1:blduyPRJ7nFo0SR4i7UrdRilcqVrOeHGbilCUNyX99Q=
-github.com/percona/go-mysql v0.0.0-20180913152646-8863d30f944b/go.mod h1:/SGLf9OMxlnK6jq4mkFiImBcJXXk5jwD+lDrwDaGXcw=
 github.com/peterbourgon/diskv v2.0.1+incompatible/go.mod h1:uqqh8zWWbv1HBMNONnaR/tNboyR3/BZd58JJSHlUSCU=
 github.com/philhofer/fwd v1.0.0/go.mod h1:gk3iGcWd9+svBvR0sR+KPcfE+RNWozjowpeBVG3ZVNU=
 github.com/philhofer/fwd v1.1.1 h1:GdGcTjf5RNAxwS4QLsiMzJYj5KEvPJD3Abr261yRQXQ=
@@ -1252,12 +1250,8 @@ github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529/go.mod h1:DxrIzT+xaE7yg
 github.com/segmentio/kafka-go v0.4.29/go.mod h1:m1lXeqJtIFYZayv0shM/tjrAFljvWLTprxBHd+3PnaU=
 github.com/sergi/go-diff v1.0.0/go.mod h1:0CfEIISq7TuYL3j771MWULgwwjU+GofnZX9QAmXWZgo=
 github.com/sergi/go-diff v1.1.0/go.mod h1:STckp+ISIX8hZLjrqAeVduY0gWCT9IjLuqbuNXdaHfM=
-github.com/shatteredsilicon/ssm v0.0.0-20221207190931-98c02733273b h1:gt2eYLcycJg4eezqRSc3/VCY3CCH9wWPR36t4T7HeMQ=
-github.com/shatteredsilicon/ssm v0.0.0-20221207190931-98c02733273b/go.mod h1:HB+33VUlhN+51gjvrmUXnUUkHkpuPU4ZYfuHHfMN2Wc=
-github.com/shatteredsilicon/ssm v0.0.0-20230510085928-951b746a5271 h1:+FBjTZSfu7J/Qpq9NG2Xc18Z+g1p52/xcX8hSObXvtI=
-github.com/shatteredsilicon/ssm v0.0.0-20230510085928-951b746a5271/go.mod h1:HB+33VUlhN+51gjvrmUXnUUkHkpuPU4ZYfuHHfMN2Wc=
-github.com/shatteredsilicon/ssm v0.0.0-20240311064044-f7a2fdb29abd h1:jTtax7joX0J8ni1SIN+/r66/L5Cd1S9uTASc0u/wL0M=
-github.com/shatteredsilicon/ssm v0.0.0-20240311064044-f7a2fdb29abd/go.mod h1:HB+33VUlhN+51gjvrmUXnUUkHkpuPU4ZYfuHHfMN2Wc=
+github.com/shatteredsilicon/ssm v0.0.0-20240723193942-a060f195308c h1:poM9XO6YlC+FC5ETajgLLa9h4NjFLa1DQJLQIYKRKV0=
+github.com/shatteredsilicon/ssm v0.0.0-20240723193942-a060f195308c/go.mod h1:HB+33VUlhN+51gjvrmUXnUUkHkpuPU4ZYfuHHfMN2Wc=
 github.com/shopspring/decimal v0.0.0-20180709203117-cd690d0c9e24/go.mod h1:M+9NzErvs504Cn4c5DxATwIqPbtswREoFCre64PpcG4=
 github.com/shopspring/decimal v0.0.0-20200227202807-02e2044944cc/go.mod h1:DKyhrW/HYNuLGql+MJL6WCR6knT2jwCFRcu2hWCYk4o=
 github.com/shopspring/decimal v1.2.0/go.mod h1:DKyhrW/HYNuLGql+MJL6WCR6knT2jwCFRcu2hWCYk4o=
