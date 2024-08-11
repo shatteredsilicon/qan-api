@@ -22,7 +22,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -34,9 +34,11 @@ import (
 	"github.com/revel/revel"
 	"github.com/shatteredsilicon/qan-api/app/agent"
 	"github.com/shatteredsilicon/qan-api/app/db"
+	"github.com/shatteredsilicon/qan-api/app/instance"
 	"github.com/shatteredsilicon/qan-api/app/shared"
 	"github.com/shatteredsilicon/qan-api/stats"
 	"github.com/shatteredsilicon/ssm/proto"
+	qanConfig "github.com/shatteredsilicon/ssm/proto/config"
 
 	"github.com/shatteredsilicon/qan-api/config"
 )
@@ -57,9 +59,9 @@ func (c Agent) SendCmd(uuid string) revel.Result {
 	agentId := c.Args["agentId"].(uint)
 
 	// Read the proto.Cmd from the client.
-	body, err := ioutil.ReadAll(c.Request.Body)
+	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		return c.Error(err, "ioutil.ReadAll")
+		return c.Error(err, "io.ReadAll")
 	}
 	if len(body) == 0 {
 		return c.BadRequest(nil, "empty body (no data posted)")
@@ -69,6 +71,31 @@ func (c Agent) SendCmd(uuid string) revel.Result {
 	cmd := &proto.Cmd{}
 	if err := json.Unmarshal(body, cmd); err != nil {
 		return c.BadRequest(err, "cannot decode proto.Cmd")
+	}
+
+	if cmd.Cmd == "RestartTool" {
+		var qan qanConfig.QAN
+		if err := json.Unmarshal(cmd.Data, &qan); err != nil {
+			return c.BadRequest(err, "cannot decode qanConfig.QAN")
+		}
+
+		dbm := c.Args["dbm"].(db.Manager)
+		if err := dbm.Open(); err != nil {
+			return c.Error(err, "Agent.SendCmd: dbm.Open")
+		}
+
+		_, inst, err := instance.NewMySQLHandler(dbm).Get(qan.UUID)
+		if err != nil {
+			return c.Error(err, "Instance.Delete: ih.Get")
+		}
+
+		// if it's intenal qan, force it to harvest SELECT/DELETE
+		// statements only
+		if inst.Name == instance.SSMServerName && inst.Subsystem == instance.SubsystemNameMySQL {
+			qan.FilterAllow = []string{"SELECT", "DELETE"}
+		}
+
+		cmd.Data, _ = json.Marshal(qan)
 	}
 
 	// Get the agent.
@@ -191,7 +218,7 @@ func (c *Agent) writeResponseFile(filename string, data []byte) error {
 	// the real size is the one returned by the Decode method so, we need
 	// to write only those bytes.
 	filename = path.Join(collectInfoFileStoragePath, filename)
-	err = ioutil.WriteFile(filename, dbuf[:size], os.ModePerm)
+	err = os.WriteFile(filename, dbuf[:size], os.ModePerm)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("cannot write the file %q", filename))
 	}
