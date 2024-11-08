@@ -261,6 +261,23 @@ var examples = []example{
 			{Db: "", Table: "test4"},
 		},
 	},
+	{ // #31
+		`
+		-- UPDATE test users
+		UPDATE test.users
+		SET user_id = @USER,
+			email = (
+				SELECT user_email
+				FROM test.wp_users
+				WHERE id = @USER
+			)
+		WHERE wp_user_id = @USER
+		`,
+		"UPDATE test.users",
+		[]qp.Table{
+			{Db: "test", Table: "users"},
+		},
+	},
 }
 
 func TestParse(t *testing.T) {

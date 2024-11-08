@@ -190,6 +190,9 @@ func (m *Mini) Parse(fingerprint, example, defaultDb string) (QueryInfo, error) 
 	// it breaks sqlparser/.
 	query = strings.Replace(query, "?+", "? ", -1)
 
+	// Strip leading comments before parsing as it could cause problem
+	query = sqlparser.StripLeadingComments(query)
+
 	// Internal newlines break everything.
 	query = strings.Replace(query, "\n", " ", -1)
 
