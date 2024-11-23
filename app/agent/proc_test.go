@@ -94,8 +94,7 @@ func (s *ProcTestSuite) TestStartServiceQAN(c *C) {
 		},
 		Interval:       300,        // 5 min
 		MaxSlowLogSize: 1073741824, // 1 GiB
-		ExampleQueries: false,
-		WorkerRunTime:  600, // 10 min
+		ExampleQueries: nil,
 	}
 	data, err := json.Marshal(config)
 	c.Assert(err, IsNil)

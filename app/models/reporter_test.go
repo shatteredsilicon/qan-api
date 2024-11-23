@@ -83,7 +83,7 @@ func (s *ReporterTestSuite) TestSimple(t *C) {
 		Limit:  5,
 	}
 
-	got, err := models.Report.Profile(s.mysqlId, begin, end, r, 0, "", false)
+	got, err := models.Report.Profile([]uint{s.mysqlId}, begin, end, r, 0, "", false, "")
 	t.Check(err, IsNil)
 
 	expectedFile := config.TestDir + "/qan/profile/may-2015-01.json"
@@ -113,7 +113,7 @@ func (s *ReporterTestSuite) Test003(t *C) {
 		Limit:  5,
 	}
 
-	got, err := models.Report.Profile(3, begin, end, r, 0, "", false)
+	got, err := models.Report.Profile([]uint{3}, begin, end, r, 0, "", false, "")
 	t.Check(err, IsNil)
 
 	expectedFile := config.TestDir + "/qan/profile/003-01.json"

@@ -159,10 +159,13 @@ func (r report) SparklineData(endTs int64, intervalTs int64, queryClassID uint, 
 		queryLogArrRaw[(row.StartTs).Unix()] = row
 	}
 
-	intervalTimeMinutes := end.Sub(begin).Minutes()
+	intervalTimePoints := end.Sub(begin).Minutes()
+	if intervalTimePoints < 3 {
+		intervalTimePoints = end.Sub(begin).Seconds() / 3
+	}
 	amountOfPoints := int64(maxAmountOfPoints)
-	if intervalTimeMinutes < maxAmountOfPoints {
-		amountOfPoints = int64(intervalTimeMinutes)
+	if intervalTimePoints < maxAmountOfPoints {
+		amountOfPoints = int64(intervalTimePoints)
 	}
 	var i int64
 	for i = 0; i < amountOfPoints; i++ {
@@ -198,7 +201,7 @@ const queryReportCountUniqueTemplate = `
 
 const queryReportTotalTemplate = `
 	SELECT
-		COALESCE(SUM(TIMESTAMPDIFF(SECOND, start_ts, end_ts)), 0) AS total_time,
+		COALESCE(SUM(IF(start_ts = end_ts, 1, TIMESTAMPDIFF(SECOND, start_ts, end_ts))), 0) AS total_time,
 		COALESCE(SUM(total_query_count), 0) AS query_count,
 		COALESCE(SUM(Query_time_sum), 0) AS query_time_sum,
 		COALESCE(MIN(Query_time_min), 0) AS query_time_min,
@@ -270,11 +273,14 @@ func (r report) Profile(instanceIDs []uint, begin, end time.Time, rank RankBy, o
 	}
 
 	intervalTime := end.Sub(begin).Seconds()
-	intervalTimeMinutes := end.Sub(begin).Minutes()
+	intervalTimePoints := end.Sub(begin).Minutes()
+	if intervalTimePoints < 3 {
+		intervalTimePoints = end.Sub(begin).Seconds() / 3
+	}
 	endTs := end.Unix()
 	amountOfPoints := int64(maxAmountOfPoints)
-	if intervalTimeMinutes < maxAmountOfPoints {
-		amountOfPoints = int64(intervalTimeMinutes)
+	if intervalTimePoints < maxAmountOfPoints {
+		amountOfPoints = int64(intervalTimePoints)
 	}
 
 	var intervalTs int64

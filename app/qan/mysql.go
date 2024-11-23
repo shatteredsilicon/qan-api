@@ -95,7 +95,10 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 	defer h.closeStatements()
 
 	// Default last_seen if no example query ts.
-	reportStartTs := report.StartTs.Format(shared.MYSQL_DATETIME_LAYOUT)
+	var reportStartTs string
+	if !report.StartTs.IsZero() {
+		reportStartTs = report.StartTs.Format(shared.MYSQL_DATETIME_LAYOUT)
+	}
 
 	// Internal metrics
 	h.stats.SetComponent("db")
@@ -141,7 +144,11 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 			lastSeen = class.Example.Ts
 		}
 		if lastSeen == "" {
-			lastSeen = reportStartTs
+			if reportStartTs != "" {
+				lastSeen = reportStartTs
+			} else {
+				lastSeen = class.StartAt.Format(shared.MYSQL_DATETIME_LAYOUT)
+			}
 		}
 
 		id, err := h.getClassId(class.Id)
@@ -194,12 +201,24 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 			}
 		}
 
+		var classStartTs, classEndTs time.Time
+		if report.StartTs.IsZero() {
+			classStartTs = class.StartAt
+		} else {
+			classStartTs = report.StartTs
+		}
+		if report.EndTs.IsZero() {
+			classEndTs = class.EndAt
+		} else {
+			classEndTs = report.EndTs
+		}
+
 		vals := h.getMetricValues(class.Metrics)
 		classVals := []interface{}{
 			id,
 			instanceId,
-			report.StartTs,
-			report.EndTs,
+			classStartTs,
+			classEndTs,
 			class.TotalQueries,
 			0, // todo: `lrq_count`,
 		}
@@ -262,10 +281,22 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 		stopOffset = report.StopOffset
 	}
 
+	var globalStartTs, globalEndTs time.Time
+	if report.StartTs.IsZero() {
+		globalStartTs = report.Global.StartAt
+	} else {
+		globalStartTs = report.StartTs
+	}
+	if report.EndTs.IsZero() {
+		globalEndTs = report.Global.EndAt
+	} else {
+		globalEndTs = report.EndTs
+	}
+
 	globalVals := []interface{}{
 		instanceId,
-		report.StartTs,
-		report.EndTs,
+		globalStartTs,
+		globalEndTs,
 		report.RunTime,
 		report.Global.TotalQueries,
 		report.Global.UniqueQueries,
@@ -617,6 +648,8 @@ func (h *MySQLMetricWriter) closeStatements() {
 // --------------------------------------------------------------------------
 
 var metricColumns []string
+var metricDuplicateUpdates []string
+var globalMetricDuplicateUpdates []string
 var insertGlobalMetrics string
 var insertClassMetrics string
 
@@ -629,29 +662,61 @@ func init() {
 	}
 	n := ((len(metrics.Query) - nCounters) * (len(metrics.StatNames) - 1)) + nCounters
 	metricColumns = make([]string, n)
+	metricDuplicateUpdates = make([]string, n)
+	globalMetricDuplicateUpdates = make([]string, n)
 
 	i := 0
 	for _, m := range metrics.Query {
 		if (m.Flags & metrics.COUNTER) == 0 {
 			for _, stat := range metrics.StatNames {
-				if stat != "p5" {
-					metricColumns[i] = m.Name + "_" + stat
-					i++
+				if stat == "p5" {
+					continue
 				}
+
+				metricColumns[i] = m.Name + "_" + stat
+				switch stat {
+				case "sum":
+					metricDuplicateUpdates[i] = fmt.Sprintf("%s = COALESCE(%s+VALUES(%s), %s, VALUES(%s))", metricColumns[i], metricColumns[i], metricColumns[i], metricColumns[i], metricColumns[i])
+					globalMetricDuplicateUpdates[i] = metricDuplicateUpdates[i]
+				case "min":
+					metricDuplicateUpdates[i] = fmt.Sprintf("%s = IF(VALUES(%s) < %s, COALESCE(VALUES(%s), %s), COALESCE(%s, VALUES(%s)))", metricColumns[i], metricColumns[i], metricColumns[i], metricColumns[i], metricColumns[i], metricColumns[i], metricColumns[i])
+					globalMetricDuplicateUpdates[i] = metricDuplicateUpdates[i]
+				case "avg":
+					metricDuplicateUpdates[i] = fmt.Sprintf("%s = COALESCE((VALUES(query_count)*VALUES(%s) + query_count*%s)/(query_count+VALUES(query_count)), %s, VALUES(%s))", metricColumns[i], metricColumns[i], metricColumns[i], metricColumns[i], metricColumns[i])
+					globalMetricDuplicateUpdates[i] = fmt.Sprintf("%s = COALESCE((VALUES(total_query_count)*VALUES(%s) + total_query_count*%s)/(total_query_count+VALUES(total_query_count)), %s, VALUES(%s))", metricColumns[i], metricColumns[i], metricColumns[i], metricColumns[i], metricColumns[i])
+				case "med", "p95", "max":
+					metricDuplicateUpdates[i] = fmt.Sprintf("%s = IF(VALUES(%s) > %s, COALESCE(VALUES(%s), %s), COALESCE(%s, VALUES(%s)))", metricColumns[i], metricColumns[i], metricColumns[i], metricColumns[i], metricColumns[i], metricColumns[i], metricColumns[i])
+					globalMetricDuplicateUpdates[i] = metricDuplicateUpdates[i]
+				default:
+					metricDuplicateUpdates[i] = fmt.Sprintf("%s = COALESCE((VALUES(%s)+%s)/2, VALUES(%s), %s)", metricColumns[i], metricColumns[i], metricColumns[i], metricColumns[i], metricColumns[i])
+					globalMetricDuplicateUpdates[i] = metricDuplicateUpdates[i]
+				}
+				i++
 			}
 		} else {
 			metricColumns[i] = m.Name + "_sum"
+			metricDuplicateUpdates[i] = fmt.Sprintf("%s = COALESCE(%s+VALUES(%s), %s, VALUES(%s))", metricColumns[i], metricColumns[i], metricColumns[i], metricColumns[i], metricColumns[i])
+			globalMetricDuplicateUpdates[i] = metricDuplicateUpdates[i]
 			i++
 		}
 	}
 
 	insertGlobalMetrics = "INSERT INTO query_global_metrics" +
 		" (" + strings.Join(GlobalCols, ",") + "," + strings.Join(metricColumns, ",") + ")" +
-		" VALUES (" + shared.Placeholders(len(GlobalCols)+len(metricColumns)) + ")"
+		" VALUES (" + shared.Placeholders(len(GlobalCols)+len(metricColumns)) + ")" +
+		" ON DUPLICATE KEY UPDATE " +
+		"	end_ts = IF(VALUES(end_ts) > end_ts, COALESCE(VALUES(end_ts), end_ts), COALESCE(end_ts, VALUES(end_ts))), " +
+		"	run_time = COALESCE(VALUES(run_time) + run_time, run_time, VALUES(run_time)), " +
+		"	total_query_count = COALESCE(VALUES(total_query_count) + total_query_count, total_query_count, VALUES(total_query_count)), " +
+		strings.Join(globalMetricDuplicateUpdates, ", ")
 
 	insertClassMetrics = "INSERT INTO query_class_metrics" +
 		" (" + strings.Join(ClassCols, ",") + "," + strings.Join(metricColumns, ",") + ")" +
-		" VALUES (" + shared.Placeholders(len(ClassCols)+len(metricColumns)) + ")"
+		" VALUES (" + shared.Placeholders(len(ClassCols)+len(metricColumns)) + ")" +
+		" ON DUPLICATE KEY UPDATE " +
+		"	end_ts = IF(VALUES(end_ts) > end_ts, COALESCE(VALUES(end_ts), end_ts), COALESCE(end_ts, VALUES(end_ts))), " +
+		"	query_count = COALESCE(VALUES(query_count) + query_count, query_count, VALUES(query_count)), " +
+		strings.Join(metricDuplicateUpdates, ", ")
 }
 
 var GlobalCols []string = []string{
