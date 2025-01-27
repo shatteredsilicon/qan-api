@@ -40,6 +40,7 @@ import (
 	queryService "github.com/shatteredsilicon/qan-api/service/query"
 	"github.com/shatteredsilicon/qan-api/stats"
 	"github.com/shatteredsilicon/ssm/proto"
+	"golang.org/x/net/websocket"
 
 	// dummy import to keep the package
 	_ "github.com/revel/modules/testrunner/app/controllers"
@@ -250,7 +251,16 @@ func authAgent(c *revel.Controller) revel.Result {
 			revel.ERROR.Printf("auth agent: %s", err)
 		}
 		c.Response.Status = int(res.Code)
-		return c.RenderText(res.Error)
+		if c.Request.Method == "WS" {
+			if err := websocket.JSON.Send(c.Request.Websocket, proto.Response{
+				Code:  res.Code,
+				Error: res.Error,
+			}); err != nil {
+				return c.RenderError(err)
+			}
+		} else {
+			return c.RenderText(res.Error)
+		}
 	}
 	c.Args["agentId"] = agentId
 
