@@ -66,7 +66,7 @@ func (c Agent) Cmd(uuid string, conn *websocket.Conn) revel.Result {
 	// When the agent disconnects, set oN.agent_configs.running=0 for the agent.
 	dbm := c.Args["dbm"].(db.Manager)
 	if err := dbm.Open(); err != nil {
-		return c.Error(err, "Agent.Cmd: dbm.Open")
+		return c.RenderError(fmt.Errorf("Agent.Cmd: dbm.Open: %s", err.Error()))
 	}
 	agentHandler := agent.NewMySQLHandler(dbm, instance.NewMySQLHandler(dbm))
 
@@ -122,7 +122,7 @@ func (c Agent) Data(conn *websocket.Conn) revel.Result {
 	dbStats := msgStats // copy
 	dbm := db.NewMySQLManager()
 	if err := dbm.Open(); err != nil {
-		return c.Error(err, "Agent.Data: dbm.Open")
+		return c.RenderError(fmt.Errorf("Agent.Data: dbm.Open: %s", err.Error()))
 	}
 	defer dbm.Close()
 
@@ -141,7 +141,7 @@ func (c Agent) Data(conn *websocket.Conn) revel.Result {
 		case io.EOF:
 			// We got everything, client disconnected.
 		default:
-			return c.Error(err, "Agent.Data: qan.SaveData")
+			return c.RenderError(fmt.Errorf("Agent.Data: qan.SaveData: %s", err.Error()))
 		}
 	}
 
@@ -160,7 +160,7 @@ func (c Agent) Log(conn *websocket.Conn) revel.Result {
 	dbStats := msgStats // copy
 	dbm := db.NewMySQLManager()
 	if err := dbm.Open(); err != nil {
-		return c.Error(err, "Agent.Log: dbm.Open")
+		return c.RenderError(fmt.Errorf("Agent.Log: dbm.Open: %s", err.Error()))
 	}
 	defer dbm.Close()
 	dbh := agent.NewLogHandler(dbm, &dbStats)
@@ -176,7 +176,7 @@ func (c Agent) Log(conn *websocket.Conn) revel.Result {
 		case io.EOF:
 			revel.TRACE.Printf("%s: done (EOF)", prefix)
 		default:
-			return c.Error(err, "Agent.Log: agent.SaveLog")
+			return c.RenderError(fmt.Errorf("Agent.Log: agent.SaveLog: %s", err.Error()))
 		}
 	}
 
