@@ -590,7 +590,8 @@ func (h *MySQLMetricWriter) prepareStatements() {
 			" (query_class_id, instance_id, user_class_id, ts, `count`)" +
 			" VALUES (?, ?, (SELECT id FROM user_classes WHERE user = ? AND host = ?), ?, ?)" +
 			" ON DUPLICATE KEY UPDATE" +
-			" `count`=VALUES(`count`)+`count`",
+			" `count`=VALUES(`count`)+`count`," +
+			" ts=ts",
 	)
 	if err != nil {
 		panic("Failed to prepare stmtInsertQueryUserSource: " + err.Error())
