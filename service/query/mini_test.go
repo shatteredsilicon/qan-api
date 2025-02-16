@@ -195,7 +195,7 @@ var examples = []example{
 		[]qp.Table{{Db: "", Table: "t6003_0"}},
 	},
 	{ // #22
-		"CREATE TABLE t6004 (id int, a varchar(25)) engine=innodb",
+		"CREATE TABLE t6004 (PRIMARY KEY id int, a varchar(25)) engine=innodb",
 		"CREATE TABLE t6004",
 		[]qp.Table{{Db: "", Table: "t6004"}},
 	},
@@ -276,6 +276,22 @@ var examples = []example{
 		"UPDATE test.users",
 		[]qp.Table{
 			{Db: "test", Table: "users"},
+		},
+	},
+	{ // #32
+		`
+		-- CREATE TEMPORARY TABLE
+		CREATE TEMPORARY TABLE test.tmp_t (
+			PRIMARY KEY tmp_t_pkey (product_id),
+			INDEX comp_key (symbol,expiration_date)
+		)
+			SELECT product_id, expiration_date, symbol, IF(cs = 0, 'P', 'C') as cs
+			FROM test.t t
+			WHERE t.ct = 7 AND t.expiration_date >= CURDATE() AND t.af = true
+		`,
+		"CREATE TABLE test.tmp_t",
+		[]qp.Table{
+			{Db: "test", Table: "tmp_t"},
 		},
 	},
 }

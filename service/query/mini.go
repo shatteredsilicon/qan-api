@@ -196,7 +196,7 @@ func (m *Mini) Parse(fingerprint, example, defaultDb string) (QueryInfo, error) 
 	// Internal newlines break everything.
 	query = strings.Replace(query, "\n", " ", -1)
 
-	s, err := sqlparser.Parse(query)
+	s, err := sqlparser.NewTestParser().Parse(query)
 	if err != nil {
 		if m.Debug {
 			fmt.Println("ERROR:", err)
@@ -280,12 +280,15 @@ func (m *Mini) parse() {
 				if m.Debug {
 					fmt.Printf("struct: %#v\n", s)
 				}
-				table := queryProto.Table{
-					Db:    s.Table.Qualifier.String(),
-					Table: s.Table.Name.String(),
+				table, err := s.Table.TableName()
+				if err == nil {
+					protoTable := queryProto.Table{
+						Db:    table.Qualifier.String(),
+						Table: table.Name.String(),
+					}
+					q.Tables = append(q.Tables, protoTable)
+					q.Abstract += " " + protoTable.String()
 				}
-				q.Tables = append(q.Tables, table)
-				q.Abstract += " " + table.String()
 			case *sqlparser.Update:
 				q.Abstract = "UPDATE"
 				if m.Debug {
