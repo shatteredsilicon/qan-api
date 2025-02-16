@@ -19,6 +19,7 @@ package app
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"os"
@@ -67,6 +68,11 @@ var AppVersion = ""
 
 func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
+
+	// package vitess.io/vitess/go/vt/sqlparser imports package github.com/golang/glog,
+	// and glog changes the output dest of the standard package 'log', we don't want that
+	// so change it back.
+	log.SetOutput(os.Stdout)
 
 	// CLOUD_API_HOSTNAME is only used for testing and should override api.hostname.
 	hostname := os.Getenv("CLOUD_API_HOSTNAME")
