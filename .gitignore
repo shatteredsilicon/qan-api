@@ -13,3 +13,4 @@ tags
 .vscode/
 Session.vim
 vendor/
+release/
