@@ -156,15 +156,27 @@ func addVisualExplain(data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("cannot unmarshal classic expain to do visual explain: %s", err.Error())
 	}
 	rawExplainRows := []string{"id\tselect_type\ttable\tpartitions\ttype\tpossible_keys\tkey\tkey_len\tref\trows\tfiltered\tExtra"}
-	for _, explainRow := range explains.Classic {
+	for i, explainRow := range explains.Classic {
 		id, _ := explainRow.Id.Value()
 		selectType, _ := explainRow.SelectType.Value()
 		table, _ := explainRow.Table.Value()
 		partitions, _ := explainRow.Partitions.Value()
 		theType, _ := explainRow.Type.Value()
+		if theType != nil {
+			explains.Classic[i].Type.String = strings.Split(explainRow.Type.String, "|")[0]
+			theType = explains.Classic[i].Type.String
+		}
 		possibleKeys, _ := explainRow.PossibleKeys.Value()
 		key, _ := explainRow.Key.Value()
+		if key != nil {
+			explains.Classic[i].Key.String = strings.Split(explainRow.Key.String, "|")[0]
+			key = explains.Classic[i].Key.String
+		}
 		keyLen, _ := explainRow.KeyLen.Value()
+		if keyLen != nil {
+			explains.Classic[i].KeyLen.String = strings.Split(explainRow.KeyLen.String, "|")[0]
+			keyLen = explains.Classic[i].KeyLen.String
+		}
 		ref, _ := explainRow.Ref.Value()
 		rows, _ := explainRow.Rows.Value()
 		filtered, _ := explainRow.Filtered.Value()
