@@ -294,6 +294,23 @@ var examples = []example{
 			{Db: "test", Table: "tmp_t"},
 		},
 	},
+	{ // #33
+		`
+		SELECT *
+		FROM t1
+		WHERE dID IN
+			(SELECT dID
+			FROM t2
+			WHERE uID ='12345')
+				AND ` + "`enabled` = 1" + `
+				AND ` + "`generated` = 1" + `
+		`,
+		"SELECT t1",
+		[]qp.Table{
+			{Db: "", Table: "t1"},
+			{Db: "", Table: "t2"},
+		},
+	},
 }
 
 func TestParse(t *testing.T) {
