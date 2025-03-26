@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -46,6 +47,7 @@ type QueryRank struct {
 	FirstSeen   time.Time
 	Log         []QueryLog
 	Stats       Stats // this query's Profile.Metric stats
+	InstanceIDs []uint
 }
 
 // QueryLog - a point of sparkline
@@ -226,7 +228,8 @@ const queryReportTemplate = `
 		qc.checksum AS checksum,
 		qc.abstract AS abstract,
 		qc.fingerprint AS fingerprint,
-		qc.first_seen AS first_seen
+		qc.first_seen AS first_seen,
+		GROUP_CONCAT(DISTINCT(qcm.instance_id)) AS instance_ids
 	FROM query_class_metrics AS qcm
 	JOIN query_classes AS qc ON qcm.query_class_id = qc.query_class_id
 	WHERE qcm.instance_id IN ({{ .InstanceIDs }}) AND (qcm.start_ts >= :begin AND qcm.start_ts < :end)
@@ -354,6 +357,7 @@ func (r report) Profile(instanceIDs []uint, begin, end time.Time, rank RankBy, o
 		Fingerprint  string    `db:"fingerprint"`
 		FirstSeen    time.Time `db:"first_seen"`
 		Stats
+		InstanceIDs string `db:"instance_ids"`
 	}
 	queriesValues := []QueryValue{}
 	nstmtQueryReport, err := db.PrepareNamed(queryReportBuffer.String())
@@ -389,6 +393,16 @@ func (r report) Profile(instanceIDs []uint, begin, end time.Time, rank RankBy, o
 			Load:        row.Stats.Sum / intervalTime,
 			Stats:       row.Stats,
 		}
+		instanceIDs := make([]uint, 0)
+		for _, idStr := range strings.Split(strings.TrimSpace(row.InstanceIDs), ",") {
+			if idStr == "" {
+				continue
+			}
+
+			id, _ := strconv.ParseUint(idStr, 10, 32)
+			instanceIDs = append(instanceIDs, uint(id))
+		}
+		qrank.InstanceIDs = instanceIDs
 		if intervalTs > 0 {
 			qrank.Log = r.SparklineData(endTs, intervalTs, row.QueryClassID, args.InstanceIDs, begin, end)
 		}

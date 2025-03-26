@@ -211,6 +211,7 @@ func (h *MySQLHandler) GetAll(regardInternalData bool) ([]proto.Instance, error)
 			continue
 		}
 
+		in.Id = instanceId
 		in.ParentUUID = parentUUID.String
 		in.DSN = dsn.String
 		in.Distro = distro.String
