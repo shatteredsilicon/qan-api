@@ -21,7 +21,7 @@ URL:		https://%{provider_prefix}
 Source0:	%{name}-%{version}-%{release}.tar.gz
 Source1:    https://github.com/percona-lab/revel-cmd/archive/v%{revel_cmd_version}/revel-cmd-v%{revel_cmd_version}.tar.gz
 
-BuildRequires:	golang
+BuildRequires:	golang >= 1.24
 Requires:	perl
 
 %if 0%{?fedora} || 0%{?rhel} == 7
