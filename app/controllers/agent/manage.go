@@ -116,15 +116,20 @@ func (c Agent) SendCmd(uuid string) revel.Result {
 	}{}
 
 	if reply.Cmd == "Explain" {
+		if reply.Error != "" {
+			revel.WARN.Printf("Got an error from reply of cmd: %+v, err: %s", cmd, reply.Error)
+		}
 		if data, err := addVisualExplain(reply.Data); err != nil {
-			errorBytes, _ := json.Marshal(struct {
+			e := struct {
 				Type    string
 				Message string
 			}{
 				Type:    "visual",
 				Message: fmt.Sprintf("cannot do visual explain: %s", err.Error()),
-			})
+			}
+			errorBytes, _ := json.Marshal(e)
 			reply.Error = string(errorBytes)
+			revel.WARN.Printf("Failed to do visual explain for data: %s, err: %s", string(reply.Data), e.Message)
 		} else {
 			reply.Data = data
 		}
