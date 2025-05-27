@@ -179,7 +179,7 @@ func (m *ConcurrentMultiplexer) send() {
 				res.errString = res.err.Error()
 			}
 			// remote Send() -> local sendResponse() -> remote API
-			if err := m.conn.Send(res.data, 5); err != nil {
+			if err := m.conn.Send(res.data, DEFAULT_SEND_TIMEOUT); err != nil {
 				log.Printf(m.name+" WARN: m.conn.Send: %s\n", err)
 				return
 			}
