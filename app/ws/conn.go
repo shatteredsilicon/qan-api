@@ -28,6 +28,8 @@ import (
 
 const (
 	BUFSIZE = 10
+
+	DEFAULT_SEND_TIMEOUT = 5
 )
 
 type Connector interface {
@@ -334,7 +336,7 @@ func (c *Connection) send() {
 	for {
 		select {
 		case bytes := <-c.sendChan:
-			if err := c.SendBytes(bytes, 5); err != nil {
+			if err := c.SendBytes(bytes, DEFAULT_SEND_TIMEOUT); err != nil {
 				select {
 				case c.sendErrChan <- Error{bytes, err}:
 				default:

@@ -25,6 +25,7 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/revel/revel"
 	"github.com/shatteredsilicon/qan-api/app/db"
 	"github.com/shatteredsilicon/qan-api/app/db/mysql"
 	"github.com/shatteredsilicon/qan-api/app/instance"
@@ -81,12 +82,8 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 		return fmt.Errorf("cannot get instance of %s: %s", report.UUID, err)
 	}
 
-	if report.Global == nil {
-		return fmt.Errorf("missing report.Global")
-	}
-
-	if report.Global.Metrics == nil {
-		return fmt.Errorf("missing report.Global.Metrics")
+	if report.Global == nil || report.Global.Metrics == nil {
+		return shared.ErrNoMetric
 	}
 
 	trace := fmt.Sprintf("MySQL %s", report.UUID)
@@ -109,7 +106,7 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 			// New class, create it.
 			id, err = h.newClass(instanceId, in.Subsystem, class, lastSeen)
 			if err != nil {
-				log.Printf("WARNING: cannot create new query class, skipping: %s: %#v: %s", err, class, trace)
+				revel.WARN.Printf("cannot create new query class, skipping: %s: %#v: %s", err, class, trace)
 				return 0, 0, 0, err
 			}
 		}
@@ -121,13 +118,13 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 		var lastExampleId, exampleRowsAffected int64
 		if class.Example != nil && class.Example.Query != "" {
 			if lastExampleId, exampleRowsAffected, err = h.updateQueryExample(instanceId, class, id, lastSeen); err != nil {
-				log.Printf("WARNING: cannot update query example: %s: %#v: %s", err, class, trace)
+				revel.WARN.Printf("cannot update query example: %s: %#v: %s", err, class, trace)
 			}
 		}
 
 		for i := range class.UserSources {
 			if err := h.insertUserSource(id, instanceId, class.UserSources[i]); err != nil {
-				log.Printf("WARNING: cannot insert query user source: %s: %#v", err, class.UserSources[i])
+				revel.WARN.Printf("cannot insert query user source: %s: %#v", err, class.UserSources[i])
 			}
 		}
 
@@ -153,7 +150,7 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 
 		id, err := h.getClassId(class.Id)
 		if err != nil && err != sql.ErrNoRows {
-			log.Printf("WARNING: cannot get query class ID, skipping: %s: %#v: %s", err, class, trace)
+			revel.WARN.Printf("cannot get query class ID, skipping: %s: %#v: %s", err, class, trace)
 			continue
 		}
 
@@ -176,7 +173,7 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 			if in.Subsystem == instance.SubsystemNameMySQL && (lastExampleId > 0 || exampleRowsAffected > 0) {
 				q, err = h.getQuery(class)
 				if err != nil {
-					log.Printf("WARNING: cannot parse query to update: %s", err)
+					revel.WARN.Printf("cannot parse query to update: %s", err)
 				}
 			}
 
@@ -196,7 +193,7 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 					continue
 				}
 			} else if err != nil {
-				log.Printf("WARNING: cannot update query class, skipping: %s: %#v: %s", err, class, trace)
+				revel.WARN.Printf("cannot update query class, skipping: %s: %#v: %s", err, class, trace)
 				continue
 			}
 		}
@@ -231,7 +228,7 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 				classDupes++
 				// warn below
 			} else {
-				log.Printf("WARNING: cannot insert query class metrics: %s: %#v: %s", err, class, trace)
+				revel.WARN.Printf("cannot insert query class metrics: %s: %#v: %s", err, class, trace)
 			}
 		}
 	}
@@ -239,7 +236,7 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 	h.stats.TimingDuration(h.stats.System("insert-class-metrics"), time.Now().Sub(t), h.stats.SampleRate)
 
 	if classDupes > 0 {
-		log.Printf("WARNING: %d duplicate query class metrics: start_ts='%s': %s", classDupes, report.StartTs, trace)
+		revel.WARN.Printf("%d duplicate query class metrics: start_ts='%s': %s", classDupes, report.StartTs, trace)
 	}
 
 	// //////////////////////////////////////////////////////////////////////
@@ -312,10 +309,10 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 	globalVals = append(globalVals, vals...)
 	t = time.Now()
 	_, err = h.stmtInsertGlobalMetrics.Exec(globalVals...)
-	h.stats.TimingDuration(h.stats.System("insert-global-metrics"), time.Now().Sub(t), h.stats.SampleRate)
+	h.stats.TimingDuration(h.stats.System("insert-global-metrics"), time.Since(t), h.stats.SampleRate)
 	if err != nil {
 		if mysql.ErrorCode(err) == mysql.ER_DUP_ENTRY {
-			log.Printf("WARNING: duplicate global metrics: start_ts='%s': %s", report.StartTs, trace)
+			revel.WARN.Printf("duplicate global metrics: start_ts='%s': %s", report.StartTs, trace)
 		} else {
 			return mysql.Error(err, "writeMetrics insertGlobalMetrics")
 		}

@@ -24,6 +24,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/revel/revel"
 	"github.com/shatteredsilicon/qan-api/app/instance"
 	"github.com/shatteredsilicon/qan-api/app/shared"
 	"github.com/shatteredsilicon/qan-api/app/ws"
@@ -73,7 +74,7 @@ func SaveData(wsConn ws.Connector, agentId uint, dbh *MySQLMetricWriter, stats *
 
 		tDecode := time.Now()
 		data, report, err := decode(bytes)
-		stats.TimingDuration(stats.System("decode"), time.Now().Sub(tDecode), stats.SampleRate)
+		stats.TimingDuration(stats.System("decode"), time.Since(tDecode), stats.SampleRate)
 		if err != nil {
 			stats.SetComponent("bad-data.msg")
 			stats.Inc(stats.System("bytes"), nBytes, stats.SampleRate)
@@ -84,7 +85,7 @@ func SaveData(wsConn ws.Connector, agentId uint, dbh *MySQLMetricWriter, stats *
 				Code:  400,
 				Error: err.Error(),
 			}
-			if err := wsConn.Send(resp, 5); err != nil {
+			if err := wsConn.Send(resp, ws.DEFAULT_SEND_TIMEOUT); err != nil {
 				return fmt.Errorf("ww.Send: %s", err)
 			}
 			continue // next report
@@ -96,7 +97,16 @@ func SaveData(wsConn ws.Connector, agentId uint, dbh *MySQLMetricWriter, stats *
 
 		if len(data.Data) > proto.MAX_DATA_SIZE {
 			stats.Inc(stats.System("too-large"), 1, stats.SampleRate)
-			log.Printf("WARN: %s: %s msg too large, dropping: %d > %d\n", prefix, data.Service, len(data.Data), proto.MAX_DATA_SIZE)
+			revel.WARN.Printf("%s: %s msg too large, dropping: %d > %d\n", prefix, data.Service, len(data.Data), proto.MAX_DATA_SIZE)
+
+			resp := proto.Response{
+				Code:  400,
+				Error: fmt.Sprintf("qan data msg is larger than %d", proto.MAX_DATA_SIZE),
+			}
+			if err := wsConn.Send(resp, ws.DEFAULT_SEND_TIMEOUT); err != nil {
+				return fmt.Errorf("ww.Send: %s", err)
+			}
+
 			continue // next report
 		}
 
@@ -105,7 +115,7 @@ func SaveData(wsConn ws.Connector, agentId uint, dbh *MySQLMetricWriter, stats *
 			// Queue the data in a per-service queue.
 			tDb := time.Now()
 			err = dbh.Write(report)
-			stats.TimingDuration(stats.System("db"), time.Now().Sub(tDb), stats.SampleRate)
+			stats.TimingDuration(stats.System("db"), time.Since(tDb), stats.SampleRate)
 			if err != nil {
 				if shared.IsNetworkError(err) {
 					// This is usually due to losing connection to MySQL. Return an error
@@ -113,14 +123,31 @@ func SaveData(wsConn ws.Connector, agentId uint, dbh *MySQLMetricWriter, stats *
 					return fmt.Errorf("dbh.Write: %s", err)
 				} else if err == shared.ErrReadOnlyDb {
 					return fmt.Errorf("dbh.Write: %s", err)
+				} else if err == shared.ErrNoMetric {
+					resp := proto.Response{
+						Code:  400,
+						Error: "some of the required metrics are missing",
+					}
+					if err := wsConn.Send(resp, ws.DEFAULT_SEND_TIMEOUT); err != nil {
+						return fmt.Errorf("ww.Send: %s", err)
+					}
 				} else {
 					// This is usually duplicate key errors, stuff we can't recover
 					// from, so we just have to drop the data and move on. If it happens
 					// a lot for many orgs, then maybe there's a real db problem, but
 					// usually it's very random.
-					log.Printf("WARN: %s: dbh.Write: %s", prefix, err)
+					revel.ERROR.Printf("%s: dbh.Write: %s", prefix, err)
 					stats.Inc(stats.System("err-db"), 1, stats.SampleRate)
 					stats.Inc(stats.Agent("err-db"), 1, stats.SampleRate)
+
+					resp := proto.Response{
+						Code:  200,
+						Error: "qan data report is ignored due to a server problem",
+					}
+					if err := wsConn.Send(resp, ws.DEFAULT_SEND_TIMEOUT); err != nil {
+						return fmt.Errorf("ww.Send: %s", err)
+					}
+
 					return nil
 				}
 			}
@@ -135,7 +162,7 @@ func SaveData(wsConn ws.Connector, agentId uint, dbh *MySQLMetricWriter, stats *
 		}
 
 		// Ack the data msg to the agent so it will remove it from its spool.
-		if err := wsConn.Send(resp, 5); err != nil {
+		if err := wsConn.Send(resp, ws.DEFAULT_SEND_TIMEOUT); err != nil {
 			return fmt.Errorf("wsConn.Send: %s", err)
 		}
 
