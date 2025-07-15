@@ -155,11 +155,17 @@ func addVisualExplain(data []byte) ([]byte, error) {
 		Classic []proto.ExplainRow
 		JSON    string
 		Visual  string
-	}{[]proto.ExplainRow{}, "", ""}
+		TEXT    string
+	}{[]proto.ExplainRow{}, "", "", ""}
 	err := json.Unmarshal(data, &explains)
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal classic expain to do visual explain: %s", err.Error())
 	}
+
+	if len(explains.Classic) == 0 {
+		return data, nil
+	}
+
 	rawExplainRows := []string{"id\tselect_type\ttable\tpartitions\ttype\tpossible_keys\tkey\tkey_len\tref\trows\tfiltered\tExtra"}
 	for i, explainRow := range explains.Classic {
 		id, _ := explainRow.Id.Value()

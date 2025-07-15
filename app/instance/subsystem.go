@@ -28,20 +28,23 @@ const (
 	SubsystemAgent
 	SubsystemMySQL
 	SubsystemMongo
+	SubsystemPostgreSQL
 )
 
 const (
-	SubsystemNameOS    = "os"
-	SubsystemNameAgent = "agent"
-	SubsystemNameMySQL = "mysql"
-	SubsystemNameMongo = "mongo"
+	SubsystemNameOS         = "os"
+	SubsystemNameAgent      = "agent"
+	SubsystemNameMySQL      = "mysql"
+	SubsystemNameMongo      = "mongo"
+	SubsystemNamePostgreSQL = "postgresql"
 )
 
 var subsysName map[uint]string = map[uint]string{
-	SubsystemOS:    SubsystemNameOS,
-	SubsystemAgent: SubsystemNameAgent,
-	SubsystemMySQL: SubsystemNameMySQL,
-	SubsystemMongo: SubsystemNameMongo,
+	SubsystemOS:         SubsystemNameOS,
+	SubsystemAgent:      SubsystemNameAgent,
+	SubsystemMySQL:      SubsystemNameMySQL,
+	SubsystemMongo:      SubsystemNameMongo,
+	SubsystemPostgreSQL: SubsystemNamePostgreSQL,
 }
 
 var subsys map[string]proto.Subsystem = map[string]proto.Subsystem{
@@ -68,6 +71,12 @@ var subsys map[string]proto.Subsystem = map[string]proto.Subsystem{
 		ParentId: 1,
 		Name:     SubsystemNameMongo,
 		Label:    "MongoDB",
+	},
+	SubsystemNamePostgreSQL: {
+		Id:       5,
+		ParentId: 1,
+		Name:     SubsystemNamePostgreSQL,
+		Label:    "PostgreSQL",
 	},
 }
 
