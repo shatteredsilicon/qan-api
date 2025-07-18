@@ -49,7 +49,7 @@ func SaveData(wsConn ws.Connector, agentId uint, dbh *MySQLMetricWriter, stats *
 
 	existMap := make(map[string]struct{})
 	for i := range instances {
-		if instances[i].Subsystem != instance.SubsystemNameMySQL && instances[i].Subsystem != instance.SubsystemNameMongo {
+		if instances[i].Subsystem != instance.SubsystemNameMySQL && instances[i].Subsystem != instance.SubsystemNameMongo && instances[i].Subsystem != instance.SubsystemNamePostgreSQL {
 			continue
 		}
 		existMap[instances[i].UUID] = struct{}{}

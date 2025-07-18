@@ -170,8 +170,8 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 			// Parse the tables/procedures only if the query example gets updated,
 			// so the tables/procedures column in query_classes table are in sync
 			// with the db/query column in query_examples table
-			if in.Subsystem == instance.SubsystemNameMySQL && (lastExampleId > 0 || exampleRowsAffected > 0) {
-				q, err = h.getQuery(class)
+			if (in.Subsystem == instance.SubsystemNameMySQL || in.Subsystem == instance.SubsystemNamePostgreSQL) && (lastExampleId > 0 || exampleRowsAffected > 0) {
+				q, err = h.getQuery(class, in.Subsystem != instance.SubsystemNamePostgreSQL)
 				if err != nil {
 					revel.WARN.Printf("cannot parse query to update: %s", err)
 				}
@@ -334,11 +334,11 @@ func (h *MySQLMetricWriter) newClass(instanceId uint, subsystem string, class *q
 	var tables, procedures interface{}
 
 	switch subsystem {
-	case instance.SubsystemNameMySQL:
+	case instance.SubsystemNameMySQL, instance.SubsystemNamePostgreSQL:
 		t := time.Now()
 		var query query.QueryInfo
 		var err error
-		query, err = h.getQuery(class)
+		query, err = h.getQuery(class, subsystem != instance.SubsystemNamePostgreSQL)
 		if err != nil {
 			return 0, err
 		}
@@ -386,12 +386,12 @@ func (h *MySQLMetricWriter) newClass(instanceId uint, subsystem string, class *q
 	return uint(classId), nil // success
 }
 
-func (h *MySQLMetricWriter) getQuery(class *qan.Class) (query.QueryInfo, error) {
+func (h *MySQLMetricWriter) getQuery(class *qan.Class, shareDB bool) (query.QueryInfo, error) {
 	var schema string
 	var queryInfo query.QueryInfo
 	// Default schema to add to the tables if there is no schema in the query like:
 	// SELECT a, b, c FROM table
-	if class.Example != nil {
+	if class.Example != nil && shareDB {
 		schema = class.Example.Db
 	}
 	if len(class.Fingerprint) < 2 {
