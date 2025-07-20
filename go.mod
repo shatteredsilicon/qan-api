@@ -10,6 +10,7 @@ require (
 	github.com/hashicorp/go-version v1.7.0
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
+	github.com/pganalyze/pg_query_go/v6 v6.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/revel/config v0.14.0
 	github.com/revel/modules v0.14.0

@@ -28,6 +28,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/shatteredsilicon/qan-api/app/db"
 	"github.com/shatteredsilicon/qan-api/app/db/mysql"
+	"github.com/shatteredsilicon/qan-api/app/instance"
 	"github.com/shatteredsilicon/qan-api/app/shared"
 	queryService "github.com/shatteredsilicon/qan-api/service/query"
 	"github.com/shatteredsilicon/qan-api/stats"
@@ -308,22 +309,23 @@ func (h *MySQLHandler) Tables(classId uint, m *queryService.Mini) ([]queryProto.
 
 	// Get database from latest example.
 	var example, db string
+	var subsystemID uint
 	err = h.dbm.DB().QueryRow(
-		"SELECT query, db "+
+		"SELECT query, db, i.subsystem_id "+
 			" FROM query_examples "+
 			" JOIN query_classes c USING (query_class_id)"+
 			" JOIN instances i USING (instance_id)"+
 			" WHERE query_class_id = ?"+
 			" ORDER BY period DESC",
 		classId,
-	).Scan(&example, &db)
+	).Scan(&example, &db, &subsystemID)
 	if err != nil {
 		return nil, mysql.Error(err, "Tables: SELECT query_examples (db)")
 	}
 
 	// If this returns an error, then youtube/vitess/go/sqltypes/sqlparser
 	// doesn't support the query type.
-	tableInfo, err := m.Parse(fingerprint, example, db)
+	tableInfo, err := m.Parse(fingerprint, example, db, subsystemID == instance.SubsystemPostgreSQL)
 	if err != nil {
 		return nil, shared.ErrNotImplemented
 	}

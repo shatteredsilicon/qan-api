@@ -313,6 +313,146 @@ var examples = []example{
 	},
 }
 
+var pgExamples = []example{
+	{
+		query: `
+			SELECT query_id,
+					query,
+					query_start
+			FROM pg_stat_activity
+		`,
+		abstract: "SELECT pg_stat_activity",
+		tables: []qp.Table{
+			{Db: "", Table: "pg_stat_activity"},
+		},
+	},
+	{
+		query: `
+			SELECT queryid,
+					pg_database.datname,
+					query,
+					calls,
+					total_exec_time,
+					min_exec_time,
+					max_exec_time,
+					mean_exec_time,
+					rows,
+					shared_blks_hit,
+					shared_blks_read,
+					shared_blks_dirtied,
+					shared_blks_written
+			FROM pg_stat_statements
+			JOIN pg_database
+				ON pg_stat_statements.dbid = pg_database.oid
+		`,
+		abstract: "SELECT pg_stat_statements pg_database",
+		tables: []qp.Table{
+			{Db: "", Table: "pg_stat_statements"},
+			{Db: "", Table: "pg_database"},
+		},
+	},
+	{
+		query: `
+			SELECT a.actor_id,
+					a.first_name,
+					a.last_name,
+					group_concat(DISTINCT (((c.name)::text ||': '::text) ||
+				(SELECT group_concat((f.title)::text) AS group_concat
+				FROM ((film f
+				JOIN film_category fc_1
+					ON ((f.film_id = fc_1.film_id)))
+				JOIN film_actor fa_1
+					ON ((f.film_id = fa_1.film_id)))
+				WHERE ((fc_1.category_id = c.category_id)
+						AND (fa_1.actor_id = a.actor_id))
+				GROUP BY  fa_1.actor_id))) AS film_info
+			FROM (((actor a
+			LEFT JOIN film_actor fa
+				ON ((a.actor_id = fa.actor_id)))
+			LEFT JOIN film_category fc
+				ON ((fa.film_id = fc.film_id)))
+			LEFT JOIN category c
+				ON ((fc.category_id = c.category_id)))
+			GROUP BY  a.actor_id, a.first_name, a.last_name
+		`,
+		abstract: "SELECT film film_category film_actor actor category",
+		tables: []qp.Table{
+			{Db: "", Table: "film"},
+			{Db: "", Table: "film_category"},
+			{Db: "", Table: "film_actor"},
+			{Db: "", Table: "actor"},
+			{Db: "", Table: "category"},
+		},
+	},
+	{
+		`
+		UPDATE test.users
+		SET user_id = @USER,
+			email = (
+				SELECT user_email
+				FROM test.wp_users
+				WHERE id = @USER
+			)
+		WHERE wp_user_id = @USER
+		`,
+		"UPDATE test.users",
+		[]qp.Table{
+			{Db: "test", Table: "users"},
+			{Db: "test", Table: "wp_users"},
+		},
+	},
+	{
+		`
+		CREATE TABLE films (
+			code        char(5) CONSTRAINT firstkey PRIMARY KEY,
+			title       varchar(40) NOT NULL,
+			did         integer NOT NULL,
+			date_prod   date,
+			kind        varchar(10),
+			len         interval hour to minute
+		);
+		`,
+		"CREATE TABLE films",
+		[]qp.Table{
+			{Db: "", Table: "films"},
+		},
+	},
+	{
+		`
+		TRUNCATE bigtable, fattable;
+		`,
+		"TRUNCATE TABLE bigtable fattable",
+		[]qp.Table{
+			{Db: "", Table: "bigtable"},
+			{Db: "", Table: "fattable"},
+		},
+	},
+	{
+		`
+		ALTER TABLE foo
+			ALTER COLUMN foo_timestamp DROP DEFAULT,
+			ALTER COLUMN foo_timestamp TYPE timestamp with time zone
+			USING
+				timestamp with time zone 'epoch' + foo_timestamp * interval '1 second',
+			ALTER COLUMN foo_timestamp SET DEFAULT now();
+		`,
+		"ALTER TABLE foo",
+		[]qp.Table{
+			{Db: "", Table: "foo"},
+		},
+	},
+	{
+		"SHOW DateStyle",
+		"SHOW DATESTYLE",
+		[]qp.Table{},
+	},
+	{
+		"call\n pita",
+		"CALL pita",
+		[]qp.Table{},
+	},
+}
+
 func TestParse(t *testing.T) {
 	m := query.NewMini(config.ApiRootDir + "/service/query")
 	go m.Run()
@@ -333,7 +473,7 @@ func TestParse(t *testing.T) {
 					e.tables = tables
 
 					t.Parallel()
-					q, err := m.Parse(e.query, "", defaultDb)
+					q, err := m.Parse(e.query, "", defaultDb, false)
 					if err != nil {
 						t.Errorf("Error in test # %d: %s", i, err)
 					}
@@ -357,6 +497,30 @@ func TestParse(t *testing.T) {
 		}
 	})
 
+	t.Run("pgExamples", func(t *testing.T) {
+		for i, e := range pgExamples {
+			t.Run(e.query, func(t *testing.T) {
+				i := i
+				tables := make([]qp.Table, len(e.tables))
+				copy(tables, e.tables)
+				e := e
+				e.tables = tables
+
+				t.Parallel()
+				q, err := m.Parse(e.query, "", "", true)
+				if err != nil {
+					t.Errorf("Error in test # %d: %s", i, err)
+				}
+
+				if q.Abstract != e.abstract {
+					t.Errorf("Test # %d: abstracts are different.\nWant: %s\nGot: %s", i, e.abstract, q.Abstract)
+				}
+				if !reflect.DeepEqual(q.Tables, e.tables) {
+					t.Errorf("Test # %d: tables are different.\nWant: %#v\nGot: %#v", i, e.tables, q.Tables)
+				}
+			})
+		}
+	})
 }
 
 func BenchmarkParse(b *testing.B) {
@@ -367,7 +531,7 @@ func BenchmarkParse(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for ei, e := range examples {
 			b.Run("examples", func(b *testing.B) {
-				q, err := m.Parse(e.query, "", "")
+				q, err := m.Parse(e.query, "", "", false)
 				if err != nil {
 					b.Errorf("Error in test # %d: %s", ei, err)
 				}
