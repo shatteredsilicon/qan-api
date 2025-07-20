@@ -28,6 +28,7 @@ import (
 	"reflect"
 	"strings"
 
+	pg_query "github.com/pganalyze/pg_query_go/v6"
 	queryProto "github.com/shatteredsilicon/ssm/proto/query"
 	"vitess.io/vitess/go/vt/sqlparser"
 )
@@ -61,9 +62,11 @@ func (q QueryInfo) ProcedureJSON() string {
 }
 
 type parseTry struct {
+	subsystem string
 	query     string
 	q         QueryInfo
 	s         sqlparser.Statement
+	pr        *pg_query.ParseResult
 	queryChan chan QueryInfo
 	crashChan chan bool
 }
@@ -166,7 +169,7 @@ func (m *Mini) Run() {
 	}
 }
 
-func (m *Mini) Parse(fingerprint, example, defaultDb string) (QueryInfo, error) {
+func (m *Mini) Parse(fingerprint, example, defaultDb string, isPg bool) (QueryInfo, error) {
 	fingerprint = strings.TrimSpace(fingerprint)
 	example = strings.TrimSpace(example)
 	q := QueryInfo{
@@ -198,12 +201,28 @@ func (m *Mini) Parse(fingerprint, example, defaultDb string) (QueryInfo, error) 
 	// Internal newlines break everything.
 	query = strings.Replace(query, "\n", " ", -1)
 
-	s, err := sqlparser.NewTestParser().Parse(query)
-	if err != nil {
-		if m.Debug {
-			fmt.Println("ERROR:", err)
+	var pr *pg_query.ParseResult
+	var s sqlparser.Statement
+	var err error
+	if isPg {
+		pr, err = pg_query.Parse(query)
+		if err != nil {
+			if m.Debug {
+				fmt.Println("ERROR:", err)
+			}
+		} else if len(pr.Stmts) == 0 {
+			pr = nil
 		}
-		return m.usePerl(query, q, err)
+	}
+
+	if !isPg || pr == nil {
+		s, err = sqlparser.NewTestParser().Parse(query)
+		if err != nil {
+			if m.Debug {
+				fmt.Println("ERROR:", err)
+			}
+			return m.usePerl(query, q, err)
+		}
 	}
 
 	// Parse the SQL structure. The sqlparser is rather terrible, incomplete code,
@@ -214,6 +233,7 @@ func (m *Mini) Parse(fingerprint, example, defaultDb string) (QueryInfo, error) 
 		query:     query,
 		q:         q,
 		s:         s,
+		pr:        pr,
 		queryChan: make(chan QueryInfo, 1),
 		crashChan: make(chan bool, 1),
 	}
@@ -260,97 +280,133 @@ func (m *Mini) parse() {
 		case p := <-m.parseChan:
 			q := p.q
 			crashChan = p.crashChan
-			switch s := p.s.(type) {
-			case sqlparser.SelectStatement:
-				q.Abstract = "SELECT"
-				if m.Debug {
-					fmt.Printf("struct: %#v\n", s)
+			if p.pr != nil {
+				if len(p.pr.Stmts) > 0 {
+					// Only parse first stmt
+					stmt := p.pr.Stmts[0].Stmt
+					var tables, extraTables protoTables
+					switch stmt.Node.(type) {
+					case *pg_query.Node_SelectStmt:
+						q.Abstract = "SELECT"
+					case *pg_query.Node_UpdateStmt:
+						q.Abstract = "UPDATE"
+					case *pg_query.Node_InsertStmt:
+						q.Abstract = "INSERT"
+					case *pg_query.Node_DeleteStmt:
+						q.Abstract = "DELETE"
+					case *pg_query.Node_CreateStmt:
+						q.Abstract = "CREATE TABLE"
+					case *pg_query.Node_AlterTableStmt:
+						q.Abstract = "ALTER TABLE"
+					case *pg_query.Node_DropStmt:
+						q.Abstract = "DROP TABLE"
+					case *pg_query.Node_TruncateStmt:
+						q.Abstract = "TRUNCATE TABLE"
+					}
+					if q.Abstract == "" {
+						q, _ = m.usePerl(p.query, q, ErrNotSupported)
+					} else {
+						tables, extraTables = getTablesFromPgNode(stmt, 0)
+						q.Tables = append(q.Tables, tables...)
+						q.Tables = append(q.Tables, extraTables...)
+						if len(tables) > 0 {
+							q.Abstract += " " + protoTables(RemoveDuplicateTables(tables)).String()
+						}
+					}
 				}
-				tables, whereTables := getTablesFromSelectStmt(s, 0)
-				if len(tables) > 0 {
+			} else {
+				switch s := p.s.(type) {
+				case sqlparser.SelectStatement:
+					q.Abstract = "SELECT"
+					if m.Debug {
+						fmt.Printf("struct: %#v\n", s)
+					}
+					tables, whereTables := getTablesFromSelectStmt(s, 0)
+					if len(tables) > 0 {
+						q.Tables = append(q.Tables, tables...)
+						q.Tables = append(q.Tables, whereTables...)
+						q.Abstract += " " + tables.String()
+					}
+				case *sqlparser.Insert:
+					// REPLACEs will be recognized by sqlparser as INSERTs and the Action field
+					// will have the real command
+					if s.Action == sqlparser.InsertAct {
+						q.Abstract = "INSERT"
+					} else if s.Action == sqlparser.ReplaceAct {
+						q.Abstract = "REPLACE"
+					}
+					if m.Debug {
+						fmt.Printf("struct: %#v\n", s)
+					}
+					table, err := s.Table.TableName()
+					if err == nil {
+						protoTable := queryProto.Table{
+							Db:    table.Qualifier.String(),
+							Table: table.Name.String(),
+						}
+						q.Tables = append(q.Tables, protoTable)
+						q.Abstract += " " + protoTable.String()
+					}
+				case *sqlparser.Update:
+					q.Abstract = "UPDATE"
+					if m.Debug {
+						fmt.Printf("struct: %#v\n", s)
+					}
+					tables, whereTables := getTablesFromTableExprs(s.TableExprs)
+					if len(tables) > 0 {
+						q.Abstract += " " + tables.String()
+					}
+					if s.Where != nil {
+						whereTables = append(whereTables, getTablesFromExpr(s.Where.Expr, 0)...)
+					}
 					q.Tables = append(q.Tables, tables...)
 					q.Tables = append(q.Tables, whereTables...)
-					q.Abstract += " " + tables.String()
-				}
-			case *sqlparser.Insert:
-				// REPLACEs will be recognized by sqlparser as INSERTs and the Action field
-				// will have the real command
-				if s.Action == sqlparser.InsertAct {
-					q.Abstract = "INSERT"
-				} else if s.Action == sqlparser.ReplaceAct {
-					q.Abstract = "REPLACE"
-				}
-				if m.Debug {
-					fmt.Printf("struct: %#v\n", s)
-				}
-				table, err := s.Table.TableName()
-				if err == nil {
-					protoTable := queryProto.Table{
-						Db:    table.Qualifier.String(),
-						Table: table.Name.String(),
+				case *sqlparser.Delete:
+					q.Abstract = "DELETE"
+					if m.Debug {
+						fmt.Printf("struct: %#v\n", s)
 					}
-					q.Tables = append(q.Tables, protoTable)
-					q.Abstract += " " + protoTable.String()
+					tables, whereTables := getTablesFromTableExprs(s.TableExprs)
+					if len(tables) > 0 {
+						q.Abstract += " " + tables.String()
+					}
+					if s.Where != nil {
+						whereTables = append(whereTables, getTablesFromExpr(s.Where.Expr, 0)...)
+					}
+					q.Tables = append(q.Tables, tables...)
+					q.Tables = append(q.Tables, whereTables...)
+				case *sqlparser.Use:
+					q.Abstract = "USE"
+				case *sqlparser.Show:
+					sql := sqlparser.NewTrackedBuffer(nil)
+					s.Format(sql)
+					q.Abstract = strings.ToUpper(sql.String())
+				case *sqlparser.CallProc:
+					q.Abstract = "CALL"
+					q.Procedures = append(q.Procedures, queryProto.Procedure{
+						DB:   s.Name.Qualifier.String(),
+						Name: s.Name.Name.String(),
+					})
+				case sqlparser.DDLStatement:
+					items := []string{strings.ToUpper(s.GetAction().ToString())}
+					t := s.GetTable()
+					items = append(items, "TABLE")
+					if t.Qualifier.String() != "" {
+						items = append(items, fmt.Sprintf("%s.%s", t.Qualifier.String(), t.Name.String()))
+					} else {
+						items = append(items, t.Name.String())
+					}
+					q.Abstract = strings.Join(items, " ")
+					q.Tables = append(q.Tables, queryProto.Table{
+						Db:    t.Qualifier.String(),
+						Table: t.Name.String(),
+					})
+				default:
+					if m.Debug {
+						fmt.Printf("unsupported type: %#v\n", p.s)
+					}
+					q, _ = m.usePerl(p.query, q, ErrNotSupported)
 				}
-			case *sqlparser.Update:
-				q.Abstract = "UPDATE"
-				if m.Debug {
-					fmt.Printf("struct: %#v\n", s)
-				}
-				tables, whereTables := getTablesFromTableExprs(s.TableExprs)
-				if len(tables) > 0 {
-					q.Abstract += " " + tables.String()
-				}
-				if s.Where != nil {
-					whereTables = append(whereTables, getTablesFromExpr(s.Where.Expr, 0)...)
-				}
-				q.Tables = append(q.Tables, tables...)
-				q.Tables = append(q.Tables, whereTables...)
-			case *sqlparser.Delete:
-				q.Abstract = "DELETE"
-				if m.Debug {
-					fmt.Printf("struct: %#v\n", s)
-				}
-				tables, whereTables := getTablesFromTableExprs(s.TableExprs)
-				if len(tables) > 0 {
-					q.Abstract += " " + tables.String()
-				}
-				if s.Where != nil {
-					whereTables = append(whereTables, getTablesFromExpr(s.Where.Expr, 0)...)
-				}
-				q.Tables = append(q.Tables, tables...)
-				q.Tables = append(q.Tables, whereTables...)
-			case *sqlparser.Use:
-				q.Abstract = "USE"
-			case *sqlparser.Show:
-				sql := sqlparser.NewTrackedBuffer(nil)
-				s.Format(sql)
-				q.Abstract = strings.ToUpper(sql.String())
-			case *sqlparser.CallProc:
-				q.Abstract = "CALL"
-				q.Procedures = append(q.Procedures, queryProto.Procedure{
-					DB:   s.Name.Qualifier.String(),
-					Name: s.Name.Name.String(),
-				})
-			case sqlparser.DDLStatement:
-				items := []string{strings.ToUpper(s.GetAction().ToString())}
-				t := s.GetTable()
-				items = append(items, "TABLE")
-				if t.Qualifier.String() != "" {
-					items = append(items, fmt.Sprintf("%s.%s", t.Qualifier.String(), t.Name.String()))
-				} else {
-					items = append(items, t.Name.String())
-				}
-				q.Abstract = strings.Join(items, " ")
-				q.Tables = append(q.Tables, queryProto.Table{
-					Db:    t.Qualifier.String(),
-					Table: t.Name.String(),
-				})
-			default:
-				if m.Debug {
-					fmt.Printf("unsupported type: %#v\n", p.s)
-				}
-				q, _ = m.usePerl(p.query, q, ErrNotSupported)
 			}
 
 			// deduplicate
@@ -374,6 +430,181 @@ func (m *Mini) usePerl(query string, q QueryInfo, originalErr error) (QueryInfo,
 	abstract := <-m.miniOut
 	q.Abstract = strings.Replace(abstract, "\n", "", -1)
 	return q, nil
+}
+
+func getTablesFromPgNode(node *pg_query.Node, depth uint) (tables, extraTables protoTables) {
+	if depth > MAX_EXPR_DEPTH {
+		return nil, nil
+	}
+	depth++
+
+	switch s := node.Node.(type) {
+	case *pg_query.Node_SelectStmt:
+		ts, ets := getTablesFromPgSelectStmt(s.SelectStmt, depth)
+		tables = append(tables, ts...)
+		extraTables = append(extraTables, ets...)
+	case *pg_query.Node_UpdateStmt:
+		tables = append(tables, queryProto.Table{Db: s.UpdateStmt.Relation.Schemaname, Table: s.UpdateStmt.Relation.Relname})
+		for _, t := range s.UpdateStmt.TargetList {
+			ts, ets := getTablesFromPgNode(t, depth)
+			extraTables = append(extraTables, ts...)
+			extraTables = append(extraTables, ets...)
+		}
+		for _, f := range s.UpdateStmt.FromClause {
+			ts, ets := getTablesFromPgNode(f, depth)
+			extraTables = append(extraTables, ts...)
+			extraTables = append(extraTables, ets...)
+		}
+		if s.UpdateStmt.WithClause != nil {
+			for _, t := range s.UpdateStmt.WithClause.Ctes {
+				ts, ets := getTablesFromPgNode(t, depth)
+				extraTables = append(extraTables, ts...)
+				extraTables = append(extraTables, ets...)
+			}
+		}
+	case *pg_query.Node_InsertStmt:
+		tables = append(tables, queryProto.Table{Db: s.InsertStmt.Relation.Schemaname, Table: s.InsertStmt.Relation.Relname})
+		if s.InsertStmt.SelectStmt != nil {
+			ts, ets := getTablesFromPgNode(s.InsertStmt.SelectStmt, depth)
+			extraTables = append(extraTables, ts...)
+			extraTables = append(extraTables, ets...)
+		}
+		if s.InsertStmt.WithClause != nil {
+			for _, t := range s.InsertStmt.WithClause.Ctes {
+				ts, ets := getTablesFromPgNode(t, depth)
+				extraTables = append(extraTables, ts...)
+				extraTables = append(extraTables, ets...)
+			}
+		}
+	case *pg_query.Node_DeleteStmt:
+		tables = append(tables, queryProto.Table{Db: s.DeleteStmt.Relation.Schemaname, Table: s.DeleteStmt.Relation.Relname})
+		if s.DeleteStmt.WithClause != nil {
+			for _, t := range s.DeleteStmt.WithClause.Ctes {
+				ts, ets := getTablesFromPgNode(t, depth)
+				extraTables = append(extraTables, ts...)
+				extraTables = append(extraTables, ets...)
+			}
+		}
+		if s.DeleteStmt.WhereClause != nil {
+			ts, ets := getTablesFromPgNode(s.DeleteStmt.WhereClause, depth)
+			extraTables = append(extraTables, ts...)
+			extraTables = append(extraTables, ets...)
+		}
+	case *pg_query.Node_CreateStmt:
+		if s.CreateStmt.Relation != nil {
+			tables = append(tables, queryProto.Table{Db: s.CreateStmt.Relation.Schemaname, Table: s.CreateStmt.Relation.Relname})
+		}
+	case *pg_query.Node_AlterTableStmt:
+		if s.AlterTableStmt.Relation != nil {
+			tables = append(tables, queryProto.Table{Db: s.AlterTableStmt.Relation.Schemaname, Table: s.AlterTableStmt.Relation.Relname})
+		}
+	case *pg_query.Node_DropStmt:
+		for _, obj := range s.DropStmt.Objects {
+			ts, ets := getTablesFromPgNode(obj, depth)
+			tables = append(tables, ts...)
+			tables = append(tables, ets...)
+		}
+	case *pg_query.Node_TruncateStmt:
+		for _, r := range s.TruncateStmt.Relations {
+			ts, ets := getTablesFromPgNode(r, depth)
+			tables = append(tables, ts...)
+			tables = append(tables, ets...)
+		}
+	case *pg_query.Node_TableLikeClause:
+		tables = append(tables, queryProto.Table{Db: s.TableLikeClause.Relation.Schemaname, Table: s.TableLikeClause.Relation.Relname})
+	case *pg_query.Node_FromExpr:
+		for _, fe := range s.FromExpr.Fromlist {
+			ts, ets := getTablesFromPgNode(fe, depth)
+			tables = append(tables, ts...)
+			tables = append(tables, ets...)
+		}
+	case *pg_query.Node_FuncCall:
+		for _, arg := range s.FuncCall.Args {
+			ts, ets := getTablesFromPgNode(arg, depth)
+			tables = append(tables, ts...)
+			tables = append(tables, ets...)
+		}
+	case *pg_query.Node_FuncExpr:
+		for _, arg := range s.FuncExpr.Args {
+			ts, ets := getTablesFromPgNode(arg, depth)
+			tables = append(tables, ts...)
+			tables = append(tables, ets...)
+		}
+	case *pg_query.Node_ResTarget:
+		for _, i := range s.ResTarget.Indirection {
+			ts, ets := getTablesFromPgNode(i, depth)
+			extraTables = append(extraTables, ts...)
+			extraTables = append(extraTables, ets...)
+		}
+		if s.ResTarget.Val != nil {
+			ts, ets := getTablesFromPgNode(s.ResTarget.Val, depth)
+			tables = append(tables, ts...)
+			tables = append(tables, ets...)
+		}
+	case *pg_query.Node_JoinExpr:
+		if s.JoinExpr.Larg != nil {
+			ts, ets := getTablesFromPgNode(s.JoinExpr.Larg, depth)
+			tables = append(tables, ts...)
+			tables = append(tables, ets...)
+		}
+		if s.JoinExpr.Rarg != nil {
+			ts, ets := getTablesFromPgNode(s.JoinExpr.Rarg, depth)
+			tables = append(tables, ts...)
+			tables = append(tables, ets...)
+		}
+	case *pg_query.Node_RangeVar:
+		tables = append(tables, queryProto.Table{Db: s.RangeVar.Schemaname, Table: s.RangeVar.Relname})
+	case *pg_query.Node_AExpr:
+		if s.AExpr.Lexpr != nil {
+			ts, ets := getTablesFromPgNode(s.AExpr.Lexpr, depth)
+			tables = append(tables, ts...)
+			tables = append(tables, ets...)
+		}
+		if s.AExpr.Rexpr != nil {
+			ts, ets := getTablesFromPgNode(s.AExpr.Rexpr, depth)
+			tables = append(tables, ts...)
+			tables = append(tables, ets...)
+		}
+	case *pg_query.Node_SubLink:
+		if s.SubLink.Subselect != nil {
+			ts, ets := getTablesFromPgNode(s.SubLink.Subselect, depth)
+			tables = append(tables, ts...)
+			tables = append(tables, ets...)
+		}
+	}
+
+	return
+}
+
+func getTablesFromPgSelectStmt(stmt *pg_query.SelectStmt, depth uint) (tables, extraTables protoTables) {
+	if depth > MAX_EXPR_DEPTH {
+		return nil, nil
+	}
+	depth++
+
+	for _, t := range stmt.TargetList {
+		ts, ets := getTablesFromPgNode(t, depth)
+		tables = append(tables, ts...)
+		tables = append(tables, ets...)
+	}
+	for _, f := range stmt.FromClause {
+		ts, ets := getTablesFromPgNode(f, depth)
+		tables = append(tables, ts...)
+		tables = append(tables, ets...)
+	}
+	if stmt.WithClause != nil {
+		for _, t := range stmt.WithClause.Ctes {
+			ts, ets := getTablesFromPgNode(t, depth)
+			extraTables = append(extraTables, ts...)
+			extraTables = append(extraTables, ets...)
+		}
+	}
+	if stmt.WhereClause != nil {
+		ts, ets := getTablesFromPgNode(stmt.WhereClause, depth)
+		extraTables = append(extraTables, ts...)
+		extraTables = append(extraTables, ets...)
+	}
+	return
 }
 
 func getTablesFromTableExprs(tes sqlparser.TableExprs) (tables protoTables, whereTables protoTables) {
