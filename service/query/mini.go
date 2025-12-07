@@ -285,7 +285,7 @@ func (m *Mini) parse() {
 					// Only parse first stmt
 					stmt := p.pr.Stmts[0].Stmt
 					var tables, extraTables protoTables
-					switch stmt.Node.(type) {
+					switch s := stmt.Node.(type) {
 					case *pg_query.Node_SelectStmt:
 						q.Abstract = "SELECT"
 					case *pg_query.Node_UpdateStmt:
@@ -302,10 +302,39 @@ func (m *Mini) parse() {
 						q.Abstract = "DROP TABLE"
 					case *pg_query.Node_TruncateStmt:
 						q.Abstract = "TRUNCATE TABLE"
+					case *pg_query.Node_CallStmt:
+						if s.CallStmt.Funccall != nil && len(s.CallStmt.Funccall.Funcname) > 0 {
+							var procedureSchema, procedureName string
+
+							nameFuncname, ok := s.CallStmt.Funccall.Funcname[len(s.CallStmt.Funccall.Funcname)-1].Node.(*pg_query.Node_String_)
+							if ok && nameFuncname != nil {
+								procedureName = nameFuncname.String_.Sval
+							}
+
+							if len(s.CallStmt.Funccall.Funcname) > 1 {
+								schemaFuncname, ok := s.CallStmt.Funccall.Funcname[len(s.CallStmt.Funccall.Funcname)-2].Node.(*pg_query.Node_String_)
+								if ok && schemaFuncname != nil {
+									procedureSchema = schemaFuncname.String_.Sval
+								}
+							}
+
+							q.Abstract = "CALL"
+							if len(procedureName) > 0 {
+								q.Procedures = append(q.Procedures, queryProto.Procedure{
+									DB:   procedureSchema,
+									Name: procedureName,
+								})
+								if len(procedureSchema) > 0 {
+									q.Abstract += fmt.Sprintf(" %s.%s", procedureSchema, procedureName)
+								} else {
+									q.Abstract += " " + procedureName
+								}
+							}
+						}
 					}
 					if q.Abstract == "" {
 						q, _ = m.usePerl(p.query, q, ErrNotSupported)
-					} else {
+					} else if !strings.HasPrefix(q.Abstract, "CALL") {
 						tables, extraTables = getTablesFromPgNode(stmt, 0)
 						q.Tables = append(q.Tables, tables...)
 						q.Tables = append(q.Tables, extraTables...)
