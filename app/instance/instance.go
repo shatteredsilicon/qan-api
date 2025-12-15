@@ -276,20 +276,25 @@ func (h *MySQLHandler) Update(in proto.Instance) error {
 	if in.ParentUUID != "" {
 		id, err := GetInstanceId(h.dbm.DB(), in.ParentUUID)
 		if err != nil {
-			return fmt.Errorf("Error while checking parent uuid: %v", err)
+			return fmt.Errorf("error while checking parent uuid: %v", err)
 		}
 		if id == 0 {
 			return fmt.Errorf("invalid parent uuid %s", in.ParentUUID)
 		}
 	}
 
+	subsys, err := GetSubsystemByName(in.Subsystem)
+	if err != nil {
+		return fmt.Errorf("invalid subsystem %s", in.Subsystem)
+	}
+
 	// If deleted was NULL in db, go turns it into “0001-01-01 00:00:00 +0000 UTC" and MySQL doesn’t like it.
 	if in.Deleted.IsZero() {
 		in.Deleted = time.Unix(1, 0)
 	}
-	_, err := h.dbm.DB().Exec(
-		"UPDATE instances SET parent_uuid = ?, dsn = ?, name = ?, distro = ?, version = ?, deleted = ? WHERE uuid = ?",
-		in.ParentUUID, in.DSN, in.Name, in.Distro, in.Version, in.Deleted, in.UUID)
+	_, err = h.dbm.DB().Exec(
+		"UPDATE instances SET parent_uuid = ?, subsystem_id = ?, dsn = ?, name = ?, distro = ?, version = ?, deleted = ? WHERE uuid = ?",
+		in.ParentUUID, subsys.Id, in.DSN, in.Name, in.Distro, in.Version, in.Deleted, in.UUID)
 	if err != nil {
 		return mysql.Error(err, "MySQLHandler.Update UPDATE instances")
 	}
