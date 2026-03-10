@@ -209,3 +209,34 @@ func (c QAN) Config(uuid string) revel.Result {
 	}
 	return c.RenderJSON(configs[0])
 }
+
+func (q QAN) SummaryQueries() revel.Result {
+	instanceIds := q.Args["instanceIds"].([]uint)
+	dbm := q.Args["dbm"].(db.Manager)
+
+	var beginTs, endTs string
+	var load float64
+	q.Params.Bind(&beginTs, "begin")
+	q.Params.Bind(&endTs, "end")
+	q.Params.Bind(&load, "load")
+
+	begin, end, err := shared.ValidateTimeRange(beginTs, endTs)
+	if err != nil {
+		return q.BadRequest(err, "invalid time range")
+	}
+
+	if load < 0 {
+		return q.BadRequest(nil, "invalid load")
+	}
+
+	if err := dbm.Open(); err != nil {
+		return q.Error(err, "QAN.Queries: dbm.Open")
+	}
+
+	queries, err := models.Query.SummaryQueries(instanceIds, begin, end, load)
+	if err != nil {
+		return q.Error(err, "qh.Queries")
+	}
+
+	return q.RenderJSON(queries)
+}
