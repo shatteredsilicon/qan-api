@@ -49,6 +49,7 @@ const summaryQueriesTemplate = `
 	{{ if and .Load .TotalQueryTime }}
 	HAVING query_time_sum / :total_query_time >= :load
 	{{ end }}
+	ORDER BY SUM(qcm.Query_time_sum) DESC
 `
 
 type SummaryQuery struct {
