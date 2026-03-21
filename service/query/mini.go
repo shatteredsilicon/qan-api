@@ -636,6 +636,20 @@ func getTablesFromPgSelectStmt(stmt *pg_query.SelectStmt, depth uint) (tables, e
 	return
 }
 
+func getTableFromTableStmt(ts sqlparser.TableStatement, depth uint) (tables protoTables, whereTables protoTables) {
+	if depth > MAX_JOIN_DEPTH {
+		return nil, nil
+	}
+	depth++
+
+	switch t := ts.(type) {
+	case sqlparser.SelectStatement:
+		return getTablesFromSelectStmt(t, depth)
+	}
+
+	return tables, whereTables
+}
+
 func getTablesFromTableExprs(tes sqlparser.TableExprs) (tables protoTables, whereTables protoTables) {
 	for _, te := range tes {
 		ts, wts := getTablesFromTableExpr(te, 0)
@@ -663,10 +677,10 @@ func getTablesFromSelectStmt(ss sqlparser.SelectStatement, depth uint) (tables p
 			whereTables = append(whereTables, getTablesFromExpr(t.Having.Expr, depth)...)
 		}
 	case *sqlparser.Union:
-		lTables, lWhereTables := getTablesFromSelectStmt(t.Left, depth)
+		lTables, lWhereTables := getTableFromTableStmt(t.Left, depth)
 		tables = append(tables, lTables...)
 		whereTables = append(whereTables, lWhereTables...)
-		rTables, rWhereTables := getTablesFromSelectStmt(t.Right, depth)
+		rTables, rWhereTables := getTableFromTableStmt(t.Right, depth)
 		tables = append(tables, rTables...)
 		whereTables = append(whereTables, rWhereTables...)
 	}
@@ -695,7 +709,7 @@ func getTablesFromTableExpr(te sqlparser.TableExpr, depth uint) (tables protoTab
 				tables = append(tables, table)
 			}
 		case *sqlparser.DerivedTable:
-			ts, wts := getTablesFromSelectStmt(a.Expr.(*sqlparser.DerivedTable).Select, depth)
+			ts, wts := getTableFromTableStmt(a.Expr.(*sqlparser.DerivedTable).Select, depth)
 			tables = append(tables, ts...)
 			whereTables = append(whereTables, wts...)
 		}
@@ -755,6 +769,12 @@ func getTablesFromExpr(expr sqlparser.Expr, depth uint) (tables protoTables) {
 			}
 			if v.Type().Implements(reflect.TypeOf((*sqlparser.SelectStatement)(nil)).Elem()) {
 				ts, wts := getTablesFromSelectStmt(v.Interface().(sqlparser.SelectStatement), depth)
+				tables = append(tables, ts...)
+				tables = append(tables, wts...)
+				continue
+			}
+			if v.Type().Implements(reflect.TypeOf((*sqlparser.TableStatement)(nil)).Elem()) {
+				ts, wts := getTableFromTableStmt(v.Interface().(sqlparser.TableStatement), depth)
 				tables = append(tables, ts...)
 				tables = append(tables, wts...)
 				continue
