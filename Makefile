@@ -18,7 +18,7 @@ all: srpm rpm
 $(TARBALL_FILE):
 	mkdir -vp $(shell dirname $(TARBALL_FILE))
 
-	GO111MODULE=on go mod vendor
+	GOTOOLCHAIN=auto GO111MODULE=on go mod vendor
 
 	tar --exclude-vcs -czf $(TARBALL_FILE) -C $(shell dirname $(CURDIR)) --transform s/^$(shell basename $(CURDIR))/ssm-qan-api/ $(shell basename $(CURDIR))
 
