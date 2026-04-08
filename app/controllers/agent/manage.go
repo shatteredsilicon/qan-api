@@ -22,7 +22,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -59,17 +58,13 @@ func (c Agent) SendCmd(uuid string) revel.Result {
 	agentId := c.Args["agentId"].(uint)
 
 	// Read the proto.Cmd from the client.
-	body, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		return c.Error(err, "io.ReadAll")
-	}
-	if len(body) == 0 {
+	if len(c.Params.JSON) == 0 {
 		return c.BadRequest(nil, "empty body (no data posted)")
 	}
 
 	// Decode the cmd.
 	cmd := &proto.Cmd{}
-	if err := json.Unmarshal(body, cmd); err != nil {
+	if err := json.Unmarshal(c.Params.JSON, cmd); err != nil {
 		return c.BadRequest(err, "cannot decode proto.Cmd")
 	}
 
@@ -117,7 +112,7 @@ func (c Agent) SendCmd(uuid string) revel.Result {
 
 	if reply.Cmd == "Explain" {
 		if reply.Error != "" {
-			revel.WARN.Printf("Got an error from reply of cmd: %+v, err: %s", cmd, reply.Error)
+			revel.AppLog.Warnf("Got an error from reply of cmd: %+v, err: %s", cmd, reply.Error)
 		}
 		if data, err := addVisualExplain(reply.Data); err != nil {
 			e := struct {
@@ -129,7 +124,7 @@ func (c Agent) SendCmd(uuid string) revel.Result {
 			}
 			errorBytes, _ := json.Marshal(e)
 			reply.Error = string(errorBytes)
-			revel.WARN.Printf("Failed to do visual explain for data: %s, err: %s", string(reply.Data), e.Message)
+			revel.AppLog.Warnf("Failed to do visual explain for data: %s, err: %s", string(reply.Data), e.Message)
 		} else {
 			reply.Data = data
 		}

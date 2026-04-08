@@ -41,7 +41,6 @@ import (
 	queryService "github.com/shatteredsilicon/qan-api/service/query"
 	"github.com/shatteredsilicon/qan-api/stats"
 	"github.com/shatteredsilicon/ssm/proto"
-	"golang.org/x/net/websocket"
 
 	// dummy import to keep the package
 	_ "github.com/revel/modules/testrunner/app/controllers"
@@ -187,11 +186,11 @@ func beforeController(c *revel.Controller) revel.Result {
 		apiBasePath = config.Get("api.base.path")
 	}
 	schema := "http"
-	if strings.Contains(strings.ToLower(c.Request.Request.Proto), "https") {
+	if strings.Contains(strings.ToLower(c.Request.URL.Scheme), "https") {
 		schema = "https"
 	}
-	c.Args["wsBase"] = "ws://" + c.Request.Request.Host + apiBasePath
-	c.Args["httpBase"] = schema + "://" + c.Request.Request.Host + apiBasePath
+	c.Args["wsBase"] = "ws://" + c.Request.Host + apiBasePath
+	c.Args["httpBase"] = schema + "://" + c.Request.Host + apiBasePath
 
 	agentVersion := c.Request.Header.Get("X-Percona-QAN-Agent-Version")
 	if agentVersion == "" {
@@ -215,7 +214,7 @@ func afterController(c *revel.Controller) revel.Result {
 
 	dbm := c.Args["dbm"].(db.Manager)
 	if err := dbm.Close(); err != nil {
-		revel.ERROR.Println(err)
+		revel.AppLog.Error(err.Error())
 	}
 
 	if c.Args["t"] != nil {
@@ -252,13 +251,13 @@ func authAgent(c *revel.Controller) revel.Result {
 	if err != nil {
 		switch err {
 		case shared.ErrNotFound:
-			revel.INFO.Printf("auth agent: not found: %s", agentUuid)
+			revel.AppLog.Infof("auth agent: not found: %s", agentUuid)
 		default:
-			revel.ERROR.Printf("auth agent: %s", err)
+			revel.AppLog.Errorf("auth agent: %s", err)
 		}
 		c.Response.Status = int(res.Code)
 		if c.Request.Method == "WS" {
-			if err := websocket.JSON.Send(c.Request.Websocket, proto.Response{
+			if err := c.Request.WebSocket.MessageSendJSON(proto.Response{
 				Code:  res.Code,
 				Error: res.Error,
 			}); err != nil {
@@ -337,7 +336,7 @@ func getQueryId(c *revel.Controller) revel.Result {
 
 func internalError(c *revel.Controller, op string, err error) revel.Result {
 	errMsg := fmt.Sprintf("%s: %s", op, err)
-	revel.ERROR.Printf(errMsg)
+	revel.AppLog.Errorf(errMsg)
 	res := proto.Error{
 		Error: errMsg,
 	}

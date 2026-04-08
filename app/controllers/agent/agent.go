@@ -20,7 +20,6 @@ package agent
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 
 	"github.com/revel/revel"
 	"github.com/shatteredsilicon/qan-api/app/agent"
@@ -63,16 +62,12 @@ func (c Agent) List() revel.Result {
 
 // POST /agents
 func (c Agent) Create() revel.Result {
-	body, err := ioutil.ReadAll(c.Request.Body)
-	if err != nil {
-		return c.Error(err, "Agent.Create: ioutil.ReadAll")
-	}
-	if len(body) == 0 {
+	if len(c.Params.JSON) == 0 {
 		return c.BadRequest(nil, "empty body (no data posted)")
 	}
 
 	var newAgent proto.Agent
-	if err = json.Unmarshal(body, &newAgent); err != nil {
+	if err := json.Unmarshal(c.Params.JSON, &newAgent); err != nil {
 		return c.BadRequest(err, "cannot decode proto.Agent")
 	}
 
@@ -129,16 +124,12 @@ func (c Agent) Get(uuid string) revel.Result {
 
 // PUT /agents/:uuid
 func (c Agent) Update(uuid string) revel.Result {
-	body, err := ioutil.ReadAll(c.Request.Body)
-	if err != nil {
-		return c.Error(err, "Agent.Update: ioutil.ReadAll")
-	}
-	if len(body) == 0 {
+	if len(c.Params.JSON) == 0 {
 		return c.BadRequest(nil, "empty body (no data posted)")
 	}
 
 	var newAgent proto.Agent
-	if err = json.Unmarshal(body, &newAgent); err != nil {
+	if err := json.Unmarshal(c.Params.JSON, &newAgent); err != nil {
 		return c.BadRequest(err, "cannot decode proto.Agent")
 	}
 
@@ -152,7 +143,7 @@ func (c Agent) Update(uuid string) revel.Result {
 
 	agentId := c.Args["agentId"].(uint)
 	agentHandler := agent.NewMySQLHandler(dbm, instance.NewMySQLHandler(dbm))
-	if err = agentHandler.Update(agentId, newAgent); err != nil {
+	if err := agentHandler.Update(agentId, newAgent); err != nil {
 		return c.Error(err, "Agent.Update: ah.Update")
 	}
 
