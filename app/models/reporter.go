@@ -238,6 +238,7 @@ const queryReportTemplate = `
 	GROUP BY qcm.query_class_id
 	{{ if eq .SortBy "latency" }} ORDER BY SUM(qcm.Query_time_sum)/SUM(qcm.query_count) DESC
 	{{ else if eq .SortBy "count" }} ORDER BY SUM(qcm.query_count) DESC
+	{{ else if eq .SortBy "first_seen" }} ORDER BY first_seen DESC
 	{{ else }} ORDER BY SUM(qcm.Query_time_sum) DESC {{ end }}
 	LIMIT :limit OFFSET :offset;
 `
