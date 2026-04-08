@@ -72,14 +72,13 @@ func (c BackEnd) Error(err error, op string) revel.Result {
 	// //////////////////////////////////////////////////////////////////////
 	default:
 		errMsg := fmt.Sprintf("%s: %s", op, err)
-		revel.ERROR.Printf(errMsg)
+		revel.AppLog.Errorf(errMsg)
 		res := proto.Error{
 			Error: errMsg,
 		}
 		c.Response.Status = http.StatusInternalServerError
 		return c.RenderJSON(res)
 	}
-	return nil
 }
 
 func (c BackEnd) BadRequest(err error, msg string) revel.Result {
@@ -101,7 +100,7 @@ func (c BackEnd) RenderNoContent() revel.Result {
 }
 
 func (j *NoContent) Apply(req *revel.Request, resp *revel.Response) {
-	resp.Out.WriteHeader(http.StatusNoContent) // 204
+	resp.Out.Header().SetStatus(http.StatusNoContent) // 204
 }
 
 type Created struct {
@@ -116,5 +115,5 @@ func (c BackEnd) RenderCreated(location string) revel.Result {
 
 func (j *Created) Apply(req *revel.Request, resp *revel.Response) {
 	resp.Out.Header().Set("Location", j.Location)
-	resp.Out.WriteHeader(http.StatusCreated) // 201
+	resp.Out.Header().SetStatus(http.StatusCreated) // 201
 }

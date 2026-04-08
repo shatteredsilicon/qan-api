@@ -3,7 +3,7 @@
 # it is impossible to pass ldflags to revel, so disable check
 %undefine _missing_build_ids_terminate_build
 
-%global revel_cmd_version   0.14.2
+%global revel_cmd_version   1.1.2
 
 %global provider        github
 %global provider_tld	com
@@ -19,7 +19,7 @@ Summary:	Query Analytics API for SSM
 License:	AGPLv3
 URL:		https://%{provider_prefix}
 Source0:	%{name}-%{version}-%{release}.tar.gz
-Source1:    https://github.com/percona-lab/revel-cmd/archive/v%{revel_cmd_version}/revel-cmd-v%{revel_cmd_version}.tar.gz
+Source1:    https://github.com/revel/cmd/archive/v%{revel_cmd_version}/cmd-v%{revel_cmd_version}.tar.gz
 
 BuildRequires:	golang >= 1.24
 Requires:	perl
@@ -40,7 +40,7 @@ See the SSM docs for more information.
 %setup -T -c -n %{name}
 %setup -q -c -a 0 -n %{name}
 %setup -q -T -D -a 1 -n %{name}
-mv revel-cmd-%{revel_cmd_version} %{name}/vendor/github.com/revel/cmd
+mv cmd-%{revel_cmd_version} %{name}/vendor/github.com/revel/cmd
 mkdir -p ${HOME}/go/src/%{provider}.%{provider_tld}/%{project}
 mv %{name} ${HOME}/go/src/%{provider_prefix}
 cp -r ${HOME}/go/src/%{provider_prefix}/vendor/github.com/revel ${HOME}/go/src/github.com/revel
@@ -53,12 +53,8 @@ export GOROOT=${HOME}/goroot
 export GOPATH=${HOME}/go
 export APP_VERSION="%{version}"
 
-pushd ${GOPATH}/src/%{provider_prefix}/vendor/github.com/revel/cmd/
-    patch -p1 < ${GOPATH}/src/%{provider_prefix}/0001-Build-stripped-binary-with-golang-ldflags-s-w.patch
-popd
-
 GO111MODULE=off go build -o ./revel ${GOPATH}/src/%{provider_prefix}/vendor/github.com/revel/cmd/revel
-GO111MODULE=off ./revel build %{provider_prefix} release prod
+GO111MODULE=off ./revel --historic-build-mode build %{provider_prefix} release prod
 rm -rf release/src/github.com/shatteredsilicon/qan-api
 mkdir -p ./src
 mv ${HOME}/go/src/%{provider_prefix}/* ./src/

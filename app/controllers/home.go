@@ -38,7 +38,7 @@ func (c Home) Links() revel.Result {
 }
 
 func (c Home) Ping() revel.Result {
-	revel.TRACE.Println("Home.Ping")
+	revel.AppLog.Debug("Home.Ping")
 	c.Response.Status = 200
 	return c.RenderText("")
 }

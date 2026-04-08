@@ -106,7 +106,7 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 			// New class, create it.
 			id, err = h.newClass(instanceId, in.Subsystem, class, lastSeen)
 			if err != nil {
-				revel.WARN.Printf("cannot create new query class, skipping: %s: %#v: %s", err, class, trace)
+				revel.AppLog.Warnf("cannot create new query class, skipping: %s: %#v: %s", err, class, trace)
 				return 0, 0, 0, err
 			}
 		}
@@ -118,13 +118,13 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 		var lastExampleId, exampleRowsAffected int64
 		if class.Example != nil && class.Example.Query != "" {
 			if lastExampleId, exampleRowsAffected, err = h.updateQueryExample(instanceId, class, id, lastSeen); err != nil {
-				revel.WARN.Printf("cannot update query example: %s: %#v: %s", err, class, trace)
+				revel.AppLog.Warnf("cannot update query example: %s: %#v: %s", err, class, trace)
 			}
 		}
 
 		for i := range class.UserSources {
 			if err := h.insertUserSource(id, instanceId, class.UserSources[i]); err != nil {
-				revel.WARN.Printf("cannot insert query user source: %s: %#v", err, class.UserSources[i])
+				revel.AppLog.Warnf("cannot insert query user source: %s: %#v", err, class.UserSources[i])
 			}
 		}
 
@@ -150,7 +150,7 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 
 		id, err := h.getClassId(class.Id)
 		if err != nil && err != sql.ErrNoRows {
-			revel.WARN.Printf("cannot get query class ID, skipping: %s: %#v: %s", err, class, trace)
+			revel.AppLog.Warnf("cannot get query class ID, skipping: %s: %#v: %s", err, class, trace)
 			continue
 		}
 
@@ -173,7 +173,7 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 			if (in.Subsystem == instance.SubsystemNameMySQL || in.Subsystem == instance.SubsystemNamePostgreSQL) && (lastExampleId > 0 || exampleRowsAffected > 0) {
 				q, err = h.getQuery(class, in.Subsystem)
 				if err != nil {
-					revel.WARN.Printf("cannot parse query to update: %s", err)
+					revel.AppLog.Warnf("cannot parse query to update: %s", err)
 				}
 			}
 
@@ -193,7 +193,7 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 					continue
 				}
 			} else if err != nil {
-				revel.WARN.Printf("cannot update query class, skipping: %s: %#v: %s", err, class, trace)
+				revel.AppLog.Warnf("cannot update query class, skipping: %s: %#v: %s", err, class, trace)
 				continue
 			}
 		}
@@ -228,7 +228,7 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 				classDupes++
 				// warn below
 			} else {
-				revel.WARN.Printf("cannot insert query class metrics: %s: %#v: %s", err, class, trace)
+				revel.AppLog.Warnf("cannot insert query class metrics: %s: %#v: %s", err, class, trace)
 			}
 		}
 	}
@@ -236,7 +236,7 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 	h.stats.TimingDuration(h.stats.System("insert-class-metrics"), time.Now().Sub(t), h.stats.SampleRate)
 
 	if classDupes > 0 {
-		revel.WARN.Printf("%d duplicate query class metrics: start_ts='%s': %s", classDupes, report.StartTs, trace)
+		revel.AppLog.Warnf("%d duplicate query class metrics: start_ts='%s': %s", classDupes, report.StartTs, trace)
 	}
 
 	// //////////////////////////////////////////////////////////////////////
@@ -312,7 +312,7 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 	h.stats.TimingDuration(h.stats.System("insert-global-metrics"), time.Since(t), h.stats.SampleRate)
 	if err != nil {
 		if mysql.ErrorCode(err) == mysql.ER_DUP_ENTRY {
-			revel.WARN.Printf("duplicate global metrics: start_ts='%s': %s", report.StartTs, trace)
+			revel.AppLog.Warnf("duplicate global metrics: start_ts='%s': %s", report.StartTs, trace)
 		} else {
 			return mysql.Error(err, "writeMetrics insertGlobalMetrics")
 		}
