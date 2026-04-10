@@ -35,7 +35,7 @@ func (tasker *Tasker) Add(t shared.InstanceTask, data interface{}) {
 func (tasker *Tasker) Run() {
 	for task := range tasker.queue {
 		if err := tasker.dbm.Open(); err != nil {
-			revel.ERROR.Printf("InstanceTasker failed to open the db connection: %s for task: %+v", err.Error(), task)
+			revel.AppLog.Errorf("InstanceTasker failed to open the db connection: %s for task: %+v", err.Error(), task)
 			continue
 		}
 
@@ -43,7 +43,7 @@ func (tasker *Tasker) Run() {
 		case shared.TypeInstanceTaskDelete:
 			uuid, ok := task.Data.(string)
 			if !ok {
-				revel.WARN.Printf("InstanceTasker received an unexpected Delete task: %+v", task)
+				revel.AppLog.Warnf("InstanceTasker received an unexpected Delete task: %+v", task)
 				break
 			}
 
@@ -59,7 +59,7 @@ func (tasker *Tasker) Run() {
 					<-time.NewTimer(5 * time.Second).C
 					err := ih.DeleteData(uuid)
 					if err != nil {
-						revel.ERROR.Printf("InstanceTasker failed to delete instance qan data: %s for task: %+v", err.Error(), task)
+						revel.AppLog.Errorf("InstanceTasker failed to delete instance qan data: %s for task: %+v", err.Error(), task)
 					}
 				}
 			}()

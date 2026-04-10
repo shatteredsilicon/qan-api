@@ -32,7 +32,6 @@ import (
 	"github.com/shatteredsilicon/qan-api/app/ws"
 	"github.com/shatteredsilicon/qan-api/config"
 	"github.com/shatteredsilicon/qan-api/stats"
-	"golang.org/x/net/websocket"
 )
 
 var msgStats stats.Stats
@@ -54,13 +53,13 @@ func init() {
 }
 
 // WS /agents/:uuid/cmd
-func (c Agent) Cmd(uuid string, conn *websocket.Conn) revel.Result {
+func (c Agent) Cmd(uuid string, conn revel.ServerWebSocket) revel.Result {
 	origin := c.Request.Header.Get("Origin")
 	agentId := c.Args["agentId"].(uint)
 	agentVersion := c.Args["agentVersion"].(string)
 	prefix := fmt.Sprintf("[Agent.Cmd] agent_id=%d %s %s", agentId, agentVersion, origin)
 
-	wsConn := ws.ExistingConnection(origin, c.Request.URL.String(), conn)
+	wsConn := ws.ExistingConnection(origin, c.Request.URL.String(), conn.(*revel.GoWebSocket).Conn)
 	defer wsConn.Disconnect()
 
 	// When the agent disconnects, set oN.agent_configs.running=0 for the agent.
@@ -87,7 +86,7 @@ func (c Agent) Cmd(uuid string, conn *websocket.Conn) revel.Result {
 	comm := agent.NewLocalAgent(agentId, mx)
 	if err := comm.Start(); err != nil {
 		shared.InternalStats.Inc(shared.InternalStats.Metric("agent.comm.err-start"), 1, shared.InternalStats.SampleRate)
-		revel.WARN.Printf("%s Failed to start: %s", prefix, err)
+		revel.AppLog.Warnf("%s Failed to start: %s", prefix, err)
 		return nil
 	}
 	defer comm.Stop()
@@ -99,24 +98,24 @@ func (c Agent) Cmd(uuid string, conn *websocket.Conn) revel.Result {
 	// (defer is LIFO) when the comm stops.
 	if err := shared.AgentDirectory.Add(agentId, comm); err != nil {
 		shared.InternalStats.Inc(shared.InternalStats.Metric("agent.comm.err-dir"), 1, shared.InternalStats.SampleRate)
-		revel.WARN.Printf("%s Failed to add to directory: %s", prefix, err)
+		revel.AppLog.Warnf("%s Failed to add to directory: %s", prefix, err)
 		return nil
 	}
 	defer shared.AgentDirectory.Remove(agentId)
 
-	revel.INFO.Printf("%s: connected", prefix)
-	defer revel.INFO.Printf("%s: disconnected", prefix)
+	revel.AppLog.Infof("%s: connected", prefix)
+	defer revel.AppLog.Infof("%s: disconnected", prefix)
 
 	<-comm.Done()
 	return nil
 }
 
-func (c Agent) Data(conn *websocket.Conn) revel.Result {
+func (c Agent) Data(conn revel.ServerWebSocket) revel.Result {
 	origin := c.Request.Header.Get("Origin")
 	agentId := c.Args["agentId"].(uint)
 
 	// Authenticate/authorize agent
-	wsConn := ws.ExistingConnection(origin, c.Request.URL.String(), conn)
+	wsConn := ws.ExistingConnection(origin, c.Request.URL.String(), conn.(*revel.GoWebSocket).Conn)
 	defer wsConn.Disconnect()
 
 	dbStats := msgStats // copy
@@ -148,13 +147,13 @@ func (c Agent) Data(conn *websocket.Conn) revel.Result {
 	return nil
 }
 
-func (c Agent) Log(conn *websocket.Conn) revel.Result {
+func (c Agent) Log(conn revel.ServerWebSocket) revel.Result {
 	origin := c.Request.Header.Get("Origin")
 	agentId := c.Args["agentId"].(uint)
 	prefix := fmt.Sprintf("%s [Data.Log] agent_id=%d", origin, agentId)
-	revel.TRACE.Println(prefix)
+	revel.AppLog.Debugf(prefix)
 
-	wsConn := ws.ExistingConnection(origin, c.Request.URL.String(), conn)
+	wsConn := ws.ExistingConnection(origin, c.Request.URL.String(), conn.(*revel.GoWebSocket).Conn)
 	defer wsConn.Disconnect()
 
 	dbStats := msgStats // copy
@@ -174,7 +173,7 @@ func (c Agent) Log(conn *websocket.Conn) revel.Result {
 	if err := agent.SaveLog(wsConn, agentId, ticker.C, dbh, &logStats); err != nil {
 		switch err {
 		case io.EOF:
-			revel.TRACE.Printf("%s: done (EOF)", prefix)
+			revel.AppLog.Debugf("%s: done (EOF)", prefix)
 		default:
 			return c.RenderError(fmt.Errorf("Agent.Log: agent.SaveLog: %s", err.Error()))
 		}

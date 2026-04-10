@@ -19,7 +19,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"strings"
 
 	uuid "github.com/nu7hatch/gouuid"
@@ -66,16 +65,12 @@ func (c *Instance) List() revel.Result {
 
 // POST /instances
 func (c *Instance) Create() revel.Result {
-	body, err := ioutil.ReadAll(c.Request.Body)
-	if err != nil {
-		return c.Error(err, "Instance.Create: ioutil.ReadAll")
-	}
-	if len(body) == 0 {
+	if len(c.Params.JSON) == 0 {
 		return c.BadRequest(nil, "empty body (no data posted)")
 	}
 
 	in := proto.Instance{}
-	err = json.Unmarshal(body, &in)
+	err := json.Unmarshal(c.Params.JSON, &in)
 	if err != nil {
 		return c.BadRequest(err, "cannot decode proto.Instance")
 	}
@@ -125,16 +120,12 @@ func (c *Instance) Get(uuid string) revel.Result {
 
 // PUT /instances/:uuid
 func (c *Instance) Update(uuid string) revel.Result {
-	body, err := ioutil.ReadAll(c.Request.Body)
-	if err != nil {
-		return c.Error(err, "Instance.Update: ioutil.ReadAll")
-	}
-	if len(body) == 0 {
+	if len(c.Params.JSON) == 0 {
 		return c.BadRequest(nil, "empty body (no data posted)")
 	}
 
 	in := proto.Instance{}
-	err = json.Unmarshal(body, &in)
+	err := json.Unmarshal(c.Params.JSON, &in)
 	if err != nil {
 		return c.BadRequest(err, "cannot decode proto.Instance")
 	}

@@ -97,7 +97,7 @@ func SaveData(wsConn ws.Connector, agentId uint, dbh *MySQLMetricWriter, stats *
 
 		if len(data.Data) > proto.MAX_DATA_SIZE {
 			stats.Inc(stats.System("too-large"), 1, stats.SampleRate)
-			revel.WARN.Printf("%s: %s msg too large, dropping: %d > %d\n", prefix, data.Service, len(data.Data), proto.MAX_DATA_SIZE)
+			revel.AppLog.Warnf("%s: %s msg too large, dropping: %d > %d\n", prefix, data.Service, len(data.Data), proto.MAX_DATA_SIZE)
 
 			resp := proto.Response{
 				Code:  400,
@@ -136,7 +136,7 @@ func SaveData(wsConn ws.Connector, agentId uint, dbh *MySQLMetricWriter, stats *
 					// from, so we just have to drop the data and move on. If it happens
 					// a lot for many orgs, then maybe there's a real db problem, but
 					// usually it's very random.
-					revel.ERROR.Printf("%s: dbh.Write: %s", prefix, err)
+					revel.AppLog.Errorf("%s: dbh.Write: %s", prefix, err)
 					stats.Inc(stats.System("err-db"), 1, stats.SampleRate)
 					stats.Inc(stats.Agent("err-db"), 1, stats.SampleRate)
 
