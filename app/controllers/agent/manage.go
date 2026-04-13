@@ -22,6 +22,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -58,13 +59,20 @@ func (c Agent) SendCmd(uuid string) revel.Result {
 	agentId := c.Args["agentId"].(uint)
 
 	// Read the proto.Cmd from the client.
-	if len(c.Params.JSON) == 0 {
+	var body []byte
+	if len(c.Params.JSON) > 0 {
+		body = c.Params.JSON
+	} else {
+		body, _ = io.ReadAll(c.Request.GetBody())
+	}
+
+	if len(body) == 0 {
 		return c.BadRequest(nil, "empty body (no data posted)")
 	}
 
 	// Decode the cmd.
 	cmd := &proto.Cmd{}
-	if err := json.Unmarshal(c.Params.JSON, cmd); err != nil {
+	if err := json.Unmarshal(body, cmd); err != nil {
 		return c.BadRequest(err, "cannot decode proto.Cmd")
 	}
 
