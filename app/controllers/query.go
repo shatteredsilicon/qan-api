@@ -20,6 +20,7 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 
 	"github.com/revel/revel"
 	"github.com/shatteredsilicon/qan-api/app/db"
@@ -75,7 +76,14 @@ func (c *Query) GetTables(id string) revel.Result {
 func (c *Query) UpdateTables(id string) revel.Result {
 	classId := c.Args["classId"].(uint)
 
-	if len(c.Params.JSON) == 0 {
+	var body []byte
+	if len(c.Params.JSON) > 0 {
+		body = c.Params.JSON
+	} else {
+		body, _ = io.ReadAll(c.Request.GetBody())
+	}
+
+	if len(body) == 0 {
 		return c.BadRequest(nil, "empty body (no data posted)")
 	}
 
@@ -83,7 +91,7 @@ func (c *Query) UpdateTables(id string) revel.Result {
 	// body as-is, but let's decode it to make sure it's valid and avoid
 	// "garbage in, garbage out".
 	var tables []queryProto.Table
-	err := json.Unmarshal(c.Params.JSON, &tables)
+	err := json.Unmarshal(body, &tables)
 	if err != nil {
 		return c.BadRequest(err, "cannot decode Table array")
 	}
@@ -107,7 +115,14 @@ func (c *Query) UpdateTables(id string) revel.Result {
 func (c *Query) UpdateProcedures(id string) revel.Result {
 	classID := c.Args["classId"].(uint)
 
-	if len(c.Params.JSON) == 0 {
+	var body []byte
+	if len(c.Params.JSON) > 0 {
+		body = c.Params.JSON
+	} else {
+		body, _ = io.ReadAll(c.Request.GetBody())
+	}
+
+	if len(body) == 0 {
 		return c.BadRequest(nil, "empty body (no data posted)")
 	}
 
@@ -115,7 +130,7 @@ func (c *Query) UpdateProcedures(id string) revel.Result {
 	// body as-is, but let's decode it to make sure it's valid and avoid
 	// "garbage in, garbage out".
 	var procedures []queryProto.Procedure
-	err := json.Unmarshal(c.Params.JSON, &procedures)
+	err := json.Unmarshal(body, &procedures)
 	if err != nil {
 		return c.BadRequest(err, "cannot decode Table array")
 	}
@@ -173,12 +188,19 @@ func (c *Query) GetExamples(id string) revel.Result {
 func (c *Query) UpdateExample(id string) revel.Result {
 	classId := c.Args["classId"].(uint)
 
-	if len(c.Params.JSON) == 0 {
+	var body []byte
+	if len(c.Params.JSON) > 0 {
+		body = c.Params.JSON
+	} else {
+		body, _ = io.ReadAll(c.Request.GetBody())
+	}
+
+	if len(body) == 0 {
 		return c.BadRequest(nil, "empty body (no data posted)")
 	}
 
 	var example queryProto.Example
-	err := json.Unmarshal(c.Params.JSON, &example)
+	err := json.Unmarshal(body, &example)
 	if err != nil {
 		return c.BadRequest(err, "cannot decode proto.query.Example")
 	}
