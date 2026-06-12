@@ -1,6 +1,6 @@
 module github.com/shatteredsilicon/qan-api
 
-go 1.25.11
+go 1.26.4
 
 require (
 	github.com/agtorre/gocolorize v1.0.0
@@ -12,6 +12,7 @@ require (
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
 	github.com/pganalyze/pg_query_go/v6 v6.1.0
 	github.com/pkg/errors v0.9.1
+	github.com/revel/cmd v1.1.2
 	github.com/revel/config v1.1.0
 	github.com/revel/modules v1.1.0
 	github.com/revel/revel v1.1.0
