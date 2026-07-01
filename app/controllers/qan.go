@@ -118,7 +118,7 @@ func (c QAN) QueryReport(queryId string) revel.Result {
 	// Init the report. This info is a little redundant because the caller
 	// already knows what query and time range it requested, but it makes
 	// the report stateless in case the caller passes the data to other code.
-	report := qp.QueryReport{
+	report := query.QueryReport{
 		InstanceId: s.InstanceUUID,
 		Begin:      begin,
 		End:        end,

@@ -199,7 +199,7 @@ func (c *Query) UpdateExample(id string) revel.Result {
 		return c.BadRequest(nil, "empty body (no data posted)")
 	}
 
-	var example queryProto.Example
+	var example query.QueryReportExample
 	err := json.Unmarshal(body, &example)
 	if err != nil {
 		return c.BadRequest(err, "cannot decode proto.query.Example")

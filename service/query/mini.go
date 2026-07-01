@@ -29,16 +29,19 @@ import (
 	"strings"
 
 	pg_query "github.com/pganalyze/pg_query_go/v6"
+	"github.com/shatteredsilicon/ssm/proto/qan"
 	queryProto "github.com/shatteredsilicon/ssm/proto/query"
 	"vitess.io/vitess/go/vt/sqlparser"
 )
 
 // QueryInfo information about query
 type QueryInfo struct {
-	Fingerprint string
-	Abstract    string
-	Tables      []queryProto.Table
-	Procedures  []queryProto.Procedure
+	Fingerprint     string
+	Abstract        string
+	Tables          []queryProto.Table
+	Procedures      []queryProto.Procedure
+	Metadata        *qan.Metadata
+	ExampleMetadata *qan.Metadata
 }
 
 // TableJSON returns tables as JSON string

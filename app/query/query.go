@@ -32,8 +32,46 @@ import (
 	"github.com/shatteredsilicon/qan-api/app/shared"
 	queryService "github.com/shatteredsilicon/qan-api/service/query"
 	"github.com/shatteredsilicon/qan-api/stats"
+	"github.com/shatteredsilicon/ssm/proto/metrics"
+	"github.com/shatteredsilicon/ssm/proto/qan"
 	queryProto "github.com/shatteredsilicon/ssm/proto/query"
 )
+
+type QueryReportQuery struct {
+	Id          string // 9C8DEE410FA0E0C8
+	Abstract    string // SELECT tbl1
+	Fingerprint string // select col from tbl1 where id=?
+	Tables      []queryProto.Table
+	Procedures  []queryProto.Procedure
+	Metadata    *qan.Metadata
+	FirstSeen   time.Time
+	LastSeen    time.Time
+	Status      string
+}
+
+type QueryReportExample struct {
+	QueryId      string // Query.Id
+	InstanceUUID string // Instance.UUID
+	Period       time.Time
+	Ts           time.Time
+	Db           string
+	QueryTime    float64
+	Query        string
+	Explain      sql.NullString
+	Size         int // Original size of the Query, before any truncation.
+}
+
+type QueryReport struct {
+	InstanceId string                   // UUID of MySQL instance
+	Begin      time.Time                // time range [Begin, End)
+	End        time.Time                // time range [Being, End)
+	Query      QueryReportQuery         // id, abstract, fingerprint, etc.
+	Metrics    map[string]metrics.Stats // keyed on metric name, e.g. Query_time
+	Example    QueryReportExample       // query example
+	Sparks     []interface{}            `json:",omitempty"`
+	Metrics2   interface{}              `json:",omitempty"`
+	Sparks2    interface{}              `json:",omitempty"`
+}
 
 func GetClassId(db *sql.DB, checksum string) (uint, error) {
 	if checksum == "" {
@@ -60,8 +98,8 @@ func NewMySQLHandler(dbm db.Manager, stats *stats.Stats) *MySQLHandler {
 	return h
 }
 
-func (h *MySQLHandler) Get(ids []string) (map[string]queryProto.Query, error) {
-	q := "SELECT checksum, COALESCE(abstract, ''), fingerprint, COALESCE(tables, ''), COALESCE(procedures, ''), first_seen, last_seen, status" +
+func (h *MySQLHandler) Get(ids []string) (map[string]QueryReportQuery, error) {
+	q := "SELECT checksum, COALESCE(abstract, ''), fingerprint, COALESCE(tables, ''), COALESCE(procedures, ''), metadata, first_seen, last_seen, status" +
 		" FROM query_classes" +
 		" WHERE checksum IN (" + shared.Placeholders(len(ids)) + ")"
 	v := shared.GenericStringList(ids)
@@ -71,16 +109,18 @@ func (h *MySQLHandler) Get(ids []string) (map[string]queryProto.Query, error) {
 	}
 	defer rows.Close()
 
-	queries := map[string]queryProto.Query{}
+	queries := map[string]QueryReportQuery{}
 	for rows.Next() {
-		query := queryProto.Query{}
+		query := QueryReportQuery{}
 		var tablesJSON, proceduresJSON string
+		var metadata []byte
 		err := rows.Scan(
 			&query.Id,
 			&query.Abstract,
 			&query.Fingerprint,
 			&tablesJSON,
 			&proceduresJSON,
+			&metadata,
 			&query.FirstSeen,
 			&query.LastSeen,
 			&query.Status,
@@ -102,13 +142,20 @@ func (h *MySQLHandler) Get(ids []string) (map[string]queryProto.Query, error) {
 			}
 			query.Procedures = procedures
 		}
+		if len(metadata) > 0 {
+			var md qan.Metadata
+			if err := json.Unmarshal(metadata, &md); err != nil {
+				return nil, err
+			}
+			query.Metadata = &md
+		}
 		queries[query.Id] = query
 	}
 
 	return queries, nil
 }
 
-func (h *MySQLHandler) Examples(classId, instanceId uint) ([]queryProto.Example, error) {
+func (h *MySQLHandler) Examples(classId, instanceId uint) ([]QueryReportExample, error) {
 	params := []interface{}{classId}
 	q := "SELECT c.checksum, i.uuid, e.period, e.ts, e.db, e.Query_time, e.query" +
 		" FROM query_examples e" +
@@ -127,9 +174,9 @@ func (h *MySQLHandler) Examples(classId, instanceId uint) ([]queryProto.Example,
 	}
 	defer rows.Close()
 
-	examples := []queryProto.Example{}
+	examples := []QueryReportExample{}
 	for rows.Next() {
-		e := queryProto.Example{}
+		e := QueryReportExample{}
 		err := rows.Scan(
 			&e.QueryId,
 			&e.InstanceUUID,
@@ -148,8 +195,8 @@ func (h *MySQLHandler) Examples(classId, instanceId uint) ([]queryProto.Example,
 	return examples, nil
 }
 
-func (h *MySQLHandler) Example(classId uint, instanceIds []uint, period time.Time) (queryProto.Example, error) {
-	e := queryProto.Example{}
+func (h *MySQLHandler) Example(classId uint, instanceIds []uint, period time.Time) (QueryReportExample, error) {
+	e := QueryReportExample{}
 	placeholders := "?" + strings.Repeat(",?", len(instanceIds)-1)
 	values := []interface{}{classId}
 	for i := range instanceIds {
@@ -215,7 +262,7 @@ func (h *MySQLHandler) UserSources(classId uint, instanceIds []uint, begin, end 
 	return userSources, nil
 }
 
-func (h *MySQLHandler) UpdateExample(classId, instanceId uint, example queryProto.Example) error {
+func (h *MySQLHandler) UpdateExample(classId, instanceId uint, example QueryReportExample) error {
 	// todo: WHERE query_class_id=? AND instance_id=? AND period=?
 	r, err := h.dbm.DB().Exec(
 		"UPDATE query_examples SET db = ?"+
