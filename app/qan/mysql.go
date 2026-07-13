@@ -19,6 +19,7 @@ package qan
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
@@ -179,7 +180,7 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 
 			// Update the table/procedures column only if query example gets updated
 			if lastExampleId > 0 || exampleRowsAffected > 0 {
-				err = h.updateQueryClass(id, lastSeen, q.TableJSON(), q.ProcedureJSON(), q.Metadata.JSON())
+				err = h.updateQueryClass(id, lastSeen, q.TableJSON(), q.ProcedureJSON(), q.MetadataJSON())
 			} else {
 				err = h.updateQueryClassWithoutTP(id, lastSeen)
 			}
@@ -342,7 +343,7 @@ func (h *MySQLMetricWriter) newClass(instanceId uint, subsystem string, class *q
 		if err != nil {
 			return 0, err
 		}
-		tables, procedures, metadata = query.TableJSON(), query.ProcedureJSON(), query.Metadata.JSON()
+		tables, procedures, metadata = query.TableJSON(), query.ProcedureJSON(), query.MetadataJSON()
 
 		h.stats.TimingDuration(h.stats.System("abstract-fingerprint"), time.Now().Sub(t), h.stats.SampleRate)
 
@@ -437,7 +438,8 @@ func (h *MySQLMetricWriter) updateQueryExample(instanceId uint, class *qan.Class
 
 	// INSERT ON DUPLICATE KEY UPDATE
 	t := time.Now()
-	res, err := h.stmtInsertQueryExample.Exec(instanceId, classId, lastSeen, lastSeen, class.Example.Db, class.Example.QueryTime, class.Example.Query, class.Example.Explain, class.Example.Metadata.JSON())
+	metadata, _ := json.Marshal(class.Example.Metadata)
+	res, err := h.stmtInsertQueryExample.Exec(instanceId, classId, lastSeen, lastSeen, class.Example.Db, class.Example.QueryTime, class.Example.Query, class.Example.Explain, metadata)
 	if err == nil {
 		lastInsertId, _ = res.LastInsertId()
 		rowsAffected, _ = res.RowsAffected()

@@ -64,6 +64,16 @@ func (q QueryInfo) ProcedureJSON() string {
 	return string(bytes)
 }
 
+// MetadataJSON returns metadata as JSON string
+func (q QueryInfo) MetadataJSON() []byte {
+	if q.Metadata == nil {
+		return nil
+	}
+
+	bytes, _ := json.Marshal(q.Metadata)
+	return bytes
+}
+
 type parseTry struct {
 	subsystem string
 	query     string

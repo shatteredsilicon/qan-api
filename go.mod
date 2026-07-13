@@ -15,7 +15,7 @@ require (
 	github.com/revel/config v1.1.0
 	github.com/revel/modules v1.1.0
 	github.com/revel/revel v1.1.0
-	github.com/shatteredsilicon/ssm v0.0.0-20250716161023-a4554c8f2a4c
+	github.com/shatteredsilicon/ssm v0.0.0-20260712151012-ba68bc2f60d4
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/net v0.55.0
 	golang.org/x/tools v0.42.0
