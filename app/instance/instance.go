@@ -235,6 +235,12 @@ func (h *MySQLHandler) GetAll(regardInternalData bool) ([]proto.Instance, error)
 	return instances, nil
 }
 
+func (h *MySQLHandler) GetSSMServerOSUUID() (string, error) {
+	var uuid string
+	err := h.dbm.DB().QueryRow("SELECT uuid FROM instances WHERE name = ? AND subsystem_id = ? AND (deleted IS NULL OR YEAR(deleted)=1970)", SSMServerName, SubsystemOS).Scan(&uuid)
+	return uuid, err
+}
+
 func (h *MySQLHandler) getInstance(query string, params ...interface{}) (uint, *proto.Instance, error) {
 	in := &proto.Instance{}
 

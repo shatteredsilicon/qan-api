@@ -86,7 +86,7 @@ func (s *TestSuite) TestSimple(t *C) {
 
 	j, err := ioutil.ReadFile(config.TestDir + "/query/may-2015.json")
 	t.Assert(err, IsNil)
-	var expect map[string]queryProto.Query
+	var expect map[string]query.QueryReportQuery
 	err = json.Unmarshal(j, &expect)
 	t.Assert(err, IsNil)
 

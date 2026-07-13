@@ -179,7 +179,7 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 
 			// Update the table/procedures column only if query example gets updated
 			if lastExampleId > 0 || exampleRowsAffected > 0 {
-				err = h.updateQueryClass(id, lastSeen, q.TableJSON(), q.ProcedureJSON())
+				err = h.updateQueryClass(id, lastSeen, q.TableJSON(), q.ProcedureJSON(), q.Metadata.JSON())
 			} else {
 				err = h.updateQueryClassWithoutTP(id, lastSeen)
 			}
@@ -331,7 +331,7 @@ func (h *MySQLMetricWriter) getClassId(checksum string) (uint, error) {
 
 func (h *MySQLMetricWriter) newClass(instanceId uint, subsystem string, class *qan.Class, lastSeen string) (uint, error) {
 	var queryAbstract, queryFingerprint string
-	var tables, procedures interface{}
+	var tables, procedures, metadata interface{}
 
 	switch subsystem {
 	case instance.SubsystemNameMySQL, instance.SubsystemNamePostgreSQL:
@@ -342,7 +342,7 @@ func (h *MySQLMetricWriter) newClass(instanceId uint, subsystem string, class *q
 		if err != nil {
 			return 0, err
 		}
-		tables, procedures = query.TableJSON(), query.ProcedureJSON()
+		tables, procedures, metadata = query.TableJSON(), query.ProcedureJSON(), query.Metadata.JSON()
 
 		h.stats.TimingDuration(h.stats.System("abstract-fingerprint"), time.Now().Sub(t), h.stats.SampleRate)
 
@@ -365,7 +365,7 @@ func (h *MySQLMetricWriter) newClass(instanceId uint, subsystem string, class *q
 	// The query checksum is the class is identified externally (in a QAN report).
 	// Since this is the first time we've seen the query, firstSeen=lastSeen.
 	t := time.Now()
-	res, err := h.stmtInsertQueryClass.Exec(class.Id, queryAbstract, queryFingerprint, tables, procedures, lastSeen, lastSeen)
+	res, err := h.stmtInsertQueryClass.Exec(class.Id, queryAbstract, queryFingerprint, tables, procedures, metadata, lastSeen, lastSeen)
 
 	h.stats.TimingDuration(h.stats.System("insert-query-class"), time.Now().Sub(t), h.stats.SampleRate)
 	if err != nil {
@@ -387,6 +387,14 @@ func (h *MySQLMetricWriter) newClass(instanceId uint, subsystem string, class *q
 }
 
 func (h *MySQLMetricWriter) getQuery(class *qan.Class, subsystem string) (query.QueryInfo, error) {
+	if class.Abstract != "" {
+		return query.QueryInfo{
+			Fingerprint: class.Fingerprint,
+			Abstract:    class.Abstract,
+			Metadata:    class.Metadata,
+		}, nil
+	}
+
 	var schema string
 	var queryInfo query.QueryInfo
 	// Default schema to add to the tables if there is no schema in the query like:
@@ -410,9 +418,9 @@ func (h *MySQLMetricWriter) getQuery(class *qan.Class, subsystem string) (query.
 	return query, nil
 }
 
-func (h *MySQLMetricWriter) updateQueryClass(queryClassId uint, lastSeen, tables, procedures string) error {
+func (h *MySQLMetricWriter) updateQueryClass(queryClassId uint, lastSeen, tables, procedures string, metadata []byte) error {
 	t := time.Now()
-	_, err := h.stmtUpdateQueryClass.Exec(lastSeen, lastSeen, tables, procedures, queryClassId)
+	_, err := h.stmtUpdateQueryClass.Exec(lastSeen, lastSeen, tables, procedures, queryClassId, metadata)
 	h.stats.TimingDuration(h.stats.System("update-query-class"), time.Now().Sub(t), h.stats.SampleRate)
 	return mysql.Error(err, "updateQueryClass UPDATE query_classes")
 }
@@ -429,7 +437,7 @@ func (h *MySQLMetricWriter) updateQueryExample(instanceId uint, class *qan.Class
 
 	// INSERT ON DUPLICATE KEY UPDATE
 	t := time.Now()
-	res, err := h.stmtInsertQueryExample.Exec(instanceId, classId, lastSeen, lastSeen, class.Example.Db, class.Example.QueryTime, class.Example.Query, class.Example.Explain)
+	res, err := h.stmtInsertQueryExample.Exec(instanceId, classId, lastSeen, lastSeen, class.Example.Db, class.Example.QueryTime, class.Example.Query, class.Example.Explain, class.Example.Metadata.JSON())
 	if err == nil {
 		lastInsertId, _ = res.LastInsertId()
 		rowsAffected, _ = res.RowsAffected()
@@ -562,13 +570,14 @@ func (h *MySQLMetricWriter) prepareStatements() {
 
 	h.stmtInsertQueryExample, err = h.dbm.DB().Prepare(
 		"INSERT INTO query_examples" +
-			" (instance_id, query_class_id, period, ts, db, Query_time, query, `explain`)" +
-			" VALUES (?, ?, DATE(?), ?, ?, ?, ?, ?)" +
+			" (instance_id, query_class_id, period, ts, db, Query_time, query, `explain`, metadata)" +
+			" VALUES (?, ?, DATE(?), ?, ?, ?, ?, ?, ?)" +
 			" ON DUPLICATE KEY UPDATE" +
 			" query=IF(VALUES(Query_time) > COALESCE(Query_time, 0), VALUES(query), query)," +
 			" ts=IF(VALUES(Query_time) > COALESCE(Query_time, 0), VALUES(ts), ts)," +
 			" db=IF(VALUES(Query_time) > COALESCE(Query_time, 0), VALUES(db), db)," +
-			" Query_time=IF(VALUES(Query_time) > COALESCE(Query_time, 0), VALUES(Query_time), Query_time)")
+			" Query_time=IF(VALUES(Query_time) > COALESCE(Query_time, 0), VALUES(Query_time), Query_time)," +
+			" metadata=IF(VALUES(Query_time) > COALESCE(Query_time, 0), VALUES(metadata), metadata)")
 	if err != nil {
 		panic("Failed to prepare stmtInsertQueryExample: " + err.Error())
 	}
@@ -602,8 +611,8 @@ func (h *MySQLMetricWriter) prepareStatements() {
 	*/
 	h.stmtInsertQueryClass, err = h.dbm.DB().Prepare(
 		"INSERT INTO query_classes" +
-			" (checksum, abstract, fingerprint, tables, procedures, first_seen, last_seen)" +
-			" VALUES (?, ?, ?, ?, ?, COALESCE(?, NOW()), ?)")
+			" (checksum, abstract, fingerprint, tables, procedures, metadata, first_seen, last_seen)" +
+			" VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, NOW()), ?)")
 	if err != nil {
 		panic("Failed to prepare stmtInsertQueryClass: " + err.Error())
 	}
@@ -614,7 +623,8 @@ func (h *MySQLMetricWriter) prepareStatements() {
 			" SET first_seen = LEAST(first_seen, ?), " +
 			" last_seen = GREATEST(last_seen, ?), " +
 			" tables = ?, " +
-			" procedures = ? " +
+			" procedures = ?, " +
+			" metadata = ? " +
 			" WHERE query_class_id = ?")
 	if err != nil {
 		panic("Failed to prepare stmtUpdateQueryClass: " + err.Error())

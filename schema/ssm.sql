@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS query_classes (
   fingerprint        VARCHAR(5000) NOT NULL,    -- select * from t where id=?
   tables             TEXT DEFAULT NULL,
   procedures         TEXT DEFAULT NULL,
+  metadata           TEXT DEFAULT NULL,
   first_seen         TIMESTAMP NULL DEFAULT NULL,
   last_seen          TIMESTAMP NULL DEFAULT NULL,
   status             CHAR(3) NOT NULL DEFAULT 'new',
@@ -60,7 +61,8 @@ CREATE TABLE IF NOT EXISTS query_examples (
   db              VARCHAR(255) NOT NULL DEFAULT '',
   Query_time      FLOAT NOT NULL DEFAULT 0,
   query           TEXT NOT NULL,
-  `explain`       TEXT NOT NULL,
+  `explain`       TEXT DEFAULT NULL,
+  metadata        TEXT DEFAULT NULL,
   --
   PRIMARY KEY (query_class_id, instance_id, period)
 ) CHARSET='utf8';

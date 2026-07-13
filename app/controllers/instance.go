@@ -20,6 +20,7 @@ package controllers
 import (
 	"encoding/json"
 	"io"
+	"os"
 	"strings"
 
 	uuid "github.com/nu7hatch/gouuid"
@@ -34,6 +35,18 @@ type Instance struct {
 	BackEnd
 }
 
+type respInstance struct {
+	*proto.Instance
+	Disconnected bool
+}
+
+func generateRespInstance(ssmUUID string, inst *proto.Instance) respInstance {
+	return respInstance{
+		Instance:     inst,
+		Disconnected: os.Getenv("DISCONNECTED") != "0" && inst.ParentUUID != ssmUUID && inst.UUID != ssmUUID,
+	}
+}
+
 // GET /instances
 func (c *Instance) List() revel.Result {
 	dbm := c.Args["dbm"].(db.Manager)
@@ -41,6 +54,11 @@ func (c *Instance) List() revel.Result {
 		return c.Error(err, "Instance.List: dbm.Open")
 	}
 	instanceHandler := instance.NewMySQLHandler(dbm)
+
+	ssmUUID, err := instanceHandler.GetSSMServerOSUUID()
+	if err != nil {
+		return c.Error(err, "Instance.List: GetSSMServerOSUUID")
+	}
 
 	var instanceType, instanceName, parentUUID string
 	c.Params.Bind(&instanceType, "type")
@@ -54,13 +72,18 @@ func (c *Instance) List() revel.Result {
 		if in == nil {
 			return c.Error(shared.ErrNotFound, "Instance.List: ih.GetByName")
 		}
-		return c.RenderJSON(in)
+		return c.RenderJSON(generateRespInstance(ssmUUID, in))
 	} else {
 		instances, err := instanceHandler.GetAll(true)
 		if err != nil {
 			return c.Error(err, "Instance.List: ih.GetAll")
 		}
-		return c.RenderJSON(instances)
+
+		respInstances := make([]respInstance, len(instances))
+		for i, instance := range instances {
+			respInstances[i] = generateRespInstance(ssmUUID, &instance)
+		}
+		return c.RenderJSON(respInstances)
 	}
 }
 
@@ -119,11 +142,17 @@ func (c *Instance) Get(uuid string) revel.Result {
 		return c.Error(err, "Instance.Get: dbm.Open")
 	}
 	instanceHandler := instance.NewMySQLHandler(dbm)
+
+	ssmUUID, err := instanceHandler.GetSSMServerOSUUID()
+	if err != nil {
+		return c.Error(err, "Instance.Get: GetSSMServerOSUUID")
+	}
+
 	_, instance, err := instanceHandler.Get(uuid)
 	if err != nil {
 		return c.Error(err, "Instance.Get: ih.Get")
 	}
-	return c.RenderJSON(instance)
+	return c.RenderJSON(generateRespInstance(ssmUUID, instance))
 }
 
 // PUT /instances/:uuid
