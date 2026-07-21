@@ -360,5 +360,16 @@ WHERE i.uuid = ?
 		return mysql.Error(err, "MySQLHandler.DeleteData DELETE agent_configs")
 	}
 
+	// clear query_explain_indexes data
+	_, err = h.dbm.DB().Exec(`
+DELETE qei
+FROM query_explain_indexes qei
+JOIN instances i ON qei.instance_id = i.instance_id
+WHERE i.uuid = ?
+`, uuid)
+	if err != nil {
+		return mysql.Error(err, "MySQLHandler.DeleteData DELETE query_explain_indexes")
+	}
+
 	return nil
 }

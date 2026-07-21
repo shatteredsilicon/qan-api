@@ -33,6 +33,7 @@ import (
 	"github.com/shatteredsilicon/qan-api/app/shared"
 	"github.com/shatteredsilicon/qan-api/service/query"
 	"github.com/shatteredsilicon/qan-api/stats"
+	"github.com/shatteredsilicon/ssm/proto"
 	"github.com/shatteredsilicon/ssm/proto/metrics"
 	"github.com/shatteredsilicon/ssm/proto/qan"
 	qp "github.com/shatteredsilicon/ssm/proto/qan"
@@ -58,6 +59,9 @@ type MySQLMetricWriter struct {
 	stmtInsertQueryClass          *sql.Stmt
 	stmtUpdateQueryClass          *sql.Stmt
 	stmtUpdateQueryClassWithoutTP *sql.Stmt
+	stmtSelectQueryExplainIndexes *sql.Stmt
+	stmtInsertQueryExplainIndexes *sql.Stmt
+	stmtDeleteQueryExplainIndexes *sql.Stmt
 }
 
 func NewMySQLMetricWriter(
@@ -120,6 +124,64 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 		if class.Example != nil && class.Example.Query != "" {
 			if lastExampleId, exampleRowsAffected, err = h.updateQueryExample(instanceId, class, id, lastSeen); err != nil {
 				revel.AppLog.Warnf("cannot update query example: %s: %#v: %s", err, class, trace)
+			}
+
+			if class.Example.Explain != "" { // update explain indexes if example changed
+				var explainResult proto.ExplainResult
+				if examplePeriod, err := time.Parse(shared.MYSQL_DATETIME_LAYOUT, lastSeen); err != nil {
+					revel.AppLog.Warnf("cannot parse example period time string '%s': %s", lastSeen, err)
+				} else if examplePeriod, err = examplePeriod.Truncate(24*time.Hour), json.Unmarshal([]byte(class.Example.Explain), &explainResult); err != nil {
+					revel.AppLog.Warnf("cannot unmarshal explain data: %s", err.Error())
+				} else if indexes, err := ExtractIndexesFromExplain(in.Subsystem, class.Example.Db, explainResult); err != nil {
+					revel.AppLog.Warnf("cannot extract indexes from explain for instance %s: %s", in.Name, err.Error())
+				} else if existingIndexes, err := h.selectQueryExplainIndexes(instanceId, id, examplePeriod); err != nil { // fetch existing index records first
+					revel.AppLog.Warnf("cannot select query explain indexes: %s", err)
+				} else {
+					var insertIndexes [][4]string
+					var deleteIndexes []uint64
+
+					// decide what need to be inserted
+					for _, index := range indexes {
+						var found bool
+						for _, existingIndex := range existingIndexes {
+							if existingIndex.CatalogName == index[0] && existingIndex.SchemaNmae == index[1] && existingIndex.TableName == index[2] && existingIndex.IndexName == index[3] {
+								found = true
+								break
+							}
+						}
+						if !found {
+							insertIndexes = append(insertIndexes, index)
+						}
+					}
+
+					// decide what need to be deleted
+					for _, existingIndex := range existingIndexes {
+						var found bool
+						for _, index := range indexes {
+							if existingIndex.CatalogName == index[0] && existingIndex.SchemaNmae == index[1] && existingIndex.TableName == index[2] && existingIndex.IndexName == index[3] {
+								found = true
+								break
+							}
+						}
+						if !found {
+							deleteIndexes = append(deleteIndexes, existingIndex.ID)
+						}
+					}
+
+					for _, index := range insertIndexes {
+						if err := h.insertQueryExplainIndexes(instanceId, id, examplePeriod, index[0], index[1], index[2], index[3]); err != nil {
+							revel.AppLog.Warnf("cannot insert query explain index '%+v': %s", index, err)
+							continue
+						}
+					}
+
+					for _, id := range deleteIndexes {
+						if err := h.deleteQueryExplainIndexes(id); err != nil {
+							revel.AppLog.Warnf("cannot delete query explain index %d: %s", id, err)
+							continue
+						}
+					}
+				}
 			}
 		}
 
@@ -457,6 +519,56 @@ func (h *MySQLMetricWriter) insertUserSource(classID, instanceID uint, source qp
 	return err
 }
 
+func (h *MySQLMetricWriter) insertQueryExplainIndexes(instanceID, classID uint, examplePeriod time.Time, catalog, schema, table, index string) error {
+	_, err := h.stmtInsertQueryExplainIndexes.Exec(instanceID, classID, examplePeriod.UTC().Format(shared.MYSQL_DATETIME_LAYOUT), catalog, schema, table, index)
+	return err
+}
+
+type queryExplainIndex struct {
+	ID            uint64
+	InstanceID    uint
+	QueryClassID  uint
+	ExamplePeriod time.Time
+	CatalogName   string
+	SchemaNmae    string
+	TableName     string
+	IndexName     string
+}
+
+func (h *MySQLMetricWriter) selectQueryExplainIndexes(instanceID, classID uint, examplePeriod time.Time) ([]queryExplainIndex, error) {
+	var indexes []queryExplainIndex
+
+	rows, err := h.stmtSelectQueryExplainIndexes.Query(instanceID, classID, examplePeriod.UTC().Format(shared.MYSQL_DATETIME_LAYOUT))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var index queryExplainIndex
+		if err = rows.Scan(
+			&index.ID,
+			&index.InstanceID,
+			&index.QueryClassID,
+			&index.ExamplePeriod,
+			&index.CatalogName,
+			&index.SchemaNmae,
+			&index.TableName,
+			&index.IndexName,
+		); err != nil {
+			return nil, err
+		}
+		indexes = append(indexes, index)
+	}
+
+	return indexes, nil
+}
+
+func (h *MySQLMetricWriter) deleteQueryExplainIndexes(id uint64) error {
+	_, err := h.stmtDeleteQueryExplainIndexes.Exec(id)
+	return err
+}
+
 func (h *MySQLMetricWriter) getMetricValues(e *qan.Metrics) []interface{} {
 	t := time.Now()
 	defer func() {
@@ -575,11 +687,11 @@ func (h *MySQLMetricWriter) prepareStatements() {
 			" (instance_id, query_class_id, period, ts, db, Query_time, query, `explain`, metadata)" +
 			" VALUES (?, ?, DATE(?), ?, ?, ?, ?, ?, ?)" +
 			" ON DUPLICATE KEY UPDATE" +
-			" query=IF(VALUES(Query_time) > COALESCE(Query_time, 0), VALUES(query), query)," +
-			" ts=IF(VALUES(Query_time) > COALESCE(Query_time, 0), VALUES(ts), ts)," +
-			" db=IF(VALUES(Query_time) > COALESCE(Query_time, 0), VALUES(db), db)," +
-			" Query_time=IF(VALUES(Query_time) > COALESCE(Query_time, 0), VALUES(Query_time), Query_time)," +
-			" metadata=IF(VALUES(Query_time) > COALESCE(Query_time, 0), VALUES(metadata), metadata)")
+			" query=VALUES(query)," +
+			" ts=VALUES(ts)," +
+			" db=VALUES(db)," +
+			" Query_time=VALUES(Query_time)," +
+			" metadata=VALUES(metadata)")
 	if err != nil {
 		panic("Failed to prepare stmtInsertQueryExample: " + err.Error())
 	}
@@ -641,6 +753,30 @@ func (h *MySQLMetricWriter) prepareStatements() {
 	if err != nil {
 		panic("Failed to prepare stmtUpdateQueryClassWithoutTP: " + err.Error())
 	}
+
+	h.stmtInsertQueryExplainIndexes, err = h.dbm.DB().Prepare(
+		"INSERT IGNORE INTO query_explain_indexes" +
+			" (instance_id, query_class_id, example_period, catalog_name, schema_name, table_name, index_name)" +
+			" VALUES (?, ?, ?, ?, ?, ?, ?)" +
+			" ON DUPLICATE KEY UPDATE id = id")
+	if err != nil {
+		panic("Failed to prepare stmtInsertQueryExplainIndexes: " + err.Error())
+	}
+
+	h.stmtSelectQueryExplainIndexes, err = h.dbm.DB().Prepare(
+		"SELECT id, instance_id, query_class_id, example_period, catalog_name, schema_name, table_name, index_name" +
+			" FROM query_explain_indexes" +
+			" WHERE instance_id = ? AND query_class_id = ? AND example_period = ?")
+	if err != nil {
+		panic("Failed to prepare stmtSelectQueryExplainIndexes: " + err.Error())
+	}
+
+	h.stmtDeleteQueryExplainIndexes, err = h.dbm.DB().Prepare(
+		"DELETE FROM query_explain_indexes" +
+			" WHERE id = ?")
+	if err != nil {
+		panic("Failed to prepare stmtDeleteQueryExplainIndexes: " + err.Error())
+	}
 }
 
 func (h *MySQLMetricWriter) closeStatements() {
@@ -653,6 +789,9 @@ func (h *MySQLMetricWriter) closeStatements() {
 	h.stmtInsertQueryClass.Close()
 	h.stmtUpdateQueryClass.Close()
 	h.stmtUpdateQueryClassWithoutTP.Close()
+	h.stmtInsertQueryExplainIndexes.Close()
+	h.stmtDeleteQueryExplainIndexes.Close()
+	h.stmtSelectQueryExplainIndexes.Close()
 }
 
 // --------------------------------------------------------------------------

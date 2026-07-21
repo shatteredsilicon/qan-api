@@ -67,6 +67,20 @@ CREATE TABLE IF NOT EXISTS query_examples (
   PRIMARY KEY (query_class_id, instance_id, period)
 ) CHARSET='utf8';
 
+CREATE TABLE IF NOT EXISTS query_explain_indexes (
+  id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  instance_id     INT UNSIGNED NOT NULL,
+  query_class_id  INT UNSIGNED NOT NULL,
+  example_period  TIMESTAMP NOT NULL,
+  catalog_name    VARCHAR(63) NOT NULL DEFAULT '' COMMENT 'for postgresql only',
+  schema_name     VARCHAR(63) NOT NULL,
+  table_name      VARCHAR(255) NOT NULL COMMENT 'also for MongoDB collection',
+  index_name      VARCHAR(255) NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE INDEX (instance_id, query_class_id, example_period, schema_name, table_name, index_name),
+  INDEX (schema_name, table_name, index_name, instance_id)
+) CHARSET='utf8';
+
 CREATE TABLE IF NOT EXISTS query_global_metrics (
   instance_id              INT UNSIGNED NOT NULL, -- PK
   start_ts                 TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,    -- PK
