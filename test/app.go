@@ -20,34 +20,31 @@ package test
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 
 	"github.com/shatteredsilicon/ssm/proto"
 )
 
 var RootDir string
 
-func init() {
-	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Lshortfile)
+// func init() {
+// 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Lshortfile)
 
-	_, filename, _, _ := runtime.Caller(1)
-	dir := filepath.Dir(filename)
+// 	_, filename, _, _ := runtime.Caller(1)
+// 	dir := filepath.Dir(filename)
 
-	for i := 0; i < 3; i++ {
-		dir = dir + "/../"
-		if FileExists(dir + ".git") {
-			RootDir = filepath.Clean(dir + "test")
-			break
-		}
-	}
-	if RootDir == "" {
-		log.Panic("Cannot find repo root dir")
-	}
-}
+// 	for i := 0; i < 3; i++ {
+// 		dir = dir + "/../"
+// 		if FileExists(dir + ".git") {
+// 			RootDir = filepath.Clean(dir + "test")
+// 			break
+// 		}
+// 	}
+// 	if RootDir == "" {
+// 		log.Panic("Cannot find repo root dir")
+// 	}
+// }
 
 func FileExists(file string) bool {
 	_, err := os.Stat(file)
