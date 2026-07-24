@@ -30,6 +30,7 @@ import (
 	"github.com/shatteredsilicon/qan-api/app/ws"
 	"github.com/shatteredsilicon/qan-api/stats"
 	"github.com/shatteredsilicon/ssm/proto"
+	qanConfig "github.com/shatteredsilicon/ssm/proto/config"
 	qp "github.com/shatteredsilicon/ssm/proto/qan"
 )
 
@@ -38,7 +39,7 @@ const (
 	THROTTLE_CODE = 299
 )
 
-func SaveData(wsConn ws.Connector, agentId uint, dbh *MySQLMetricWriter, stats *stats.Stats) error {
+func SaveData(wsConn ws.Connector, agentId uint, configs []proto.AgentConfig, dbh *MySQLMetricWriter, stats *stats.Stats) error {
 	prefix := fmt.Sprintf("[qan.SaveData] agent_id=%d", agentId)
 
 	// get all existing instances
@@ -47,12 +48,12 @@ func SaveData(wsConn ws.Connector, agentId uint, dbh *MySQLMetricWriter, stats *
 		return err
 	}
 
-	existMap := make(map[string]struct{})
+	existMap := make(map[string]proto.Instance)
 	for i := range instances {
 		if instances[i].Subsystem != instance.SubsystemNameMySQL && instances[i].Subsystem != instance.SubsystemNameMongo && instances[i].Subsystem != instance.SubsystemNamePostgreSQL {
 			continue
 		}
-		existMap[instances[i].UUID] = struct{}{}
+		existMap[instances[i].UUID] = instances[i]
 	}
 
 	nMsgs := 0
@@ -111,10 +112,17 @@ func SaveData(wsConn ws.Connector, agentId uint, dbh *MySQLMetricWriter, stats *
 		}
 
 		// check if instance exists first
-		if _, ok := existMap[report.UUID]; ok {
+		if instance, ok := existMap[report.UUID]; ok {
+			var config *qanConfig.QAN
+			for _, c := range configs {
+				if c.Service == "qan" && c.UUID == report.UUID {
+					json.Unmarshal([]byte(c.Running), &config)
+					break
+				}
+			}
 			// Queue the data in a per-service queue.
 			tDb := time.Now()
-			err = dbh.Write(report)
+			err = dbh.Write(instance, report, config)
 			stats.TimingDuration(stats.System("db"), time.Since(tDb), stats.SampleRate)
 			if err != nil {
 				if shared.IsNetworkError(err) {

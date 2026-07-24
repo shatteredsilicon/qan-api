@@ -128,6 +128,12 @@ func (c Agent) Data(conn revel.ServerWebSocket) revel.Result {
 	// create instance handler
 	ih := instance.NewMySQLHandler(dbm)
 
+	agentHandler := agent.NewMySQLHandler(dbm, ih)
+	configs, err := agentHandler.GetConfigs(agentId)
+	if err != nil {
+		return c.RenderError(fmt.Errorf("Agent.Data: agent.GetConfigs: %s", err.Error()))
+	}
+
 	dbh := qan.NewMySQLMetricWriter(dbm, ih, shared.QueryAbstracter, &dbStats)
 
 	// Read and queue log entries from agent.
@@ -135,7 +141,7 @@ func (c Agent) Data(conn revel.ServerWebSocket) revel.Result {
 
 	// Synchronous data transfer from agent to API: agent sends data as proto.Data,
 	// API accepts, queues, and sends data.Response; repeat.
-	if err := qan.SaveData(wsConn, agentId, dbh, &dataStats); err != nil {
+	if err := qan.SaveData(wsConn, agentId, configs, dbh, &dataStats); err != nil {
 		switch err {
 		case io.EOF:
 			// We got everything, client disconnected.
