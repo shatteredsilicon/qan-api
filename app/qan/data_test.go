@@ -110,7 +110,7 @@ func (s *DataTestSuite) TestSaveData(t *C) {
 	// Call SaveData which will wait on wsConn.RecvBytes().
 	errChan := make(chan error, 1)
 	go func() {
-		errChan <- qan.SaveData(s.wsConn, 2, s.dbh, stats.NullStats())
+		errChan <- qan.SaveData(s.wsConn, 2, nil, s.dbh, stats.NullStats())
 	}()
 
 	// Send data, wait for a response.

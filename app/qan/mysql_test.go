@@ -32,6 +32,7 @@ import (
 	"github.com/shatteredsilicon/qan-api/stats"
 	"github.com/shatteredsilicon/qan-api/test"
 	testDb "github.com/shatteredsilicon/qan-api/tests/setup/db"
+	"github.com/shatteredsilicon/ssm/proto"
 	qp "github.com/shatteredsilicon/ssm/proto/qan"
 	. "gopkg.in/check.v1"
 )
@@ -111,14 +112,14 @@ func (s *MySQLTestSuite) TestSimple(t *C) {
 	report1.EndTs = now.Add(-2 * time.Second)
 	report1.StartOffset = 0
 	report1.EndOffset = 1000
-	err = qanHandler.Write(report1)
+	err = qanHandler.Write(proto.Instance{}, report1, nil)
 	t.Assert(err, IsNil)
 
 	report2.StartTs = now.Add(-2 * time.Second)
 	report2.EndTs = now.Add(-1 * time.Second)
 	report2.StartOffset = 0
 	report2.EndOffset = 1000
-	err = qanHandler.Write(report2)
+	err = qanHandler.Write(proto.Instance{}, report2, nil)
 	t.Assert(err, IsNil)
 
 	if diff := test.TableDiff(s.testDb.DB(), "query_global_metrics", "instance_id,start_ts", config.TestDir+"/qan/001/qgm.tab"); diff != "" {
@@ -143,7 +144,7 @@ func (s *MySQLTestSuite) TestQueryExample(t *C) {
 	t.Assert(err, IsNil)
 	report1.StartTs = now.Add(-3 * time.Second)
 	report1.EndTs = now.Add(-2 * time.Second)
-	err = qanHandler.Write(report1)
+	err = qanHandler.Write(proto.Instance{}, report1, nil)
 	t.Assert(err, IsNil)
 	if diff := test.TableDiff(s.testDb.DB(), "query_examples", "query_class_id", config.TestDir+"/qan/001/query_examples_1.tab"); diff != "" {
 		t.Error(diff)
@@ -157,7 +158,7 @@ func (s *MySQLTestSuite) TestQueryExample(t *C) {
 	t.Assert(err, IsNil)
 	report2.StartTs = now.Add(-2 * time.Second)
 	report2.EndTs = now.Add(-1 * time.Second)
-	err = qanHandler.Write(report2)
+	err = qanHandler.Write(proto.Instance{}, report2, nil)
 	t.Assert(err, IsNil)
 	if diff := test.TableDiff(s.testDb.DB(), "query_examples", "query_class_id", config.TestDir+"/qan/001/query_examples_2.tab"); diff != "" {
 		t.Error(diff)
@@ -178,7 +179,7 @@ func (s *MySQLTestSuite) TestUpdateTablesInClasses(t *C) {
 	t.Assert(err, IsNil)
 	report1.StartTs = now.Add(-3 * time.Second)
 	report1.EndTs = now.Add(-2 * time.Second)
-	err = qanHandler.Write(report1)
+	err = qanHandler.Write(proto.Instance{}, report1, nil)
 	t.Assert(err, IsNil)
 	if diff := test.TableDiff(s.testDb.DB(), "query_examples", "query_class_id", config.TestDir+"/qan/001/query_examples_1.tab"); diff != "" {
 		t.Error(diff)
@@ -195,7 +196,7 @@ func (s *MySQLTestSuite) TestUpdateTablesInClasses(t *C) {
 	t.Assert(err, IsNil)
 	report2.StartTs = now.Add(-2 * time.Second)
 	report2.EndTs = now.Add(-1 * time.Second)
-	err = qanHandler.Write(report2)
+	err = qanHandler.Write(proto.Instance{}, report2, nil)
 	t.Assert(err, IsNil)
 	if diff := test.TableDiff(s.testDb.DB(), "query_examples", "query_class_id", config.TestDir+"/qan/001/query_examples_2.tab"); diff != "" {
 		t.Error(diff)
@@ -238,7 +239,7 @@ func (s *MySQLTestSuite) TestQueryExampleUsesDefaultDb(t *C) {
 	report.Class[0].Example.Query = "select c from t where id=100"
 
 	qanHandler := qan.NewMySQLMetricWriter(db.DBManager, s.ih, s.m, s.nullStats)
-	err = qanHandler.Write(report)
+	err = qanHandler.Write(proto.Instance{}, report, nil)
 	t.Assert(err, IsNil)
 
 	var tables string
@@ -268,7 +269,7 @@ func (s *MySQLTestSuite) TestLastSeen(t *C) {
 	qanHandler := qan.NewMySQLMetricWriter(db.DBManager, s.ih, s.m, s.nullStats)
 
 	// Write metrics first time to set last seen.
-	err = qanHandler.Write(report1)
+	err = qanHandler.Write(proto.Instance{}, report1, nil)
 	t.Assert(err, IsNil)
 
 	// first_seen should be set to class.Query.Ts, or interval.StartTs.
@@ -288,7 +289,7 @@ func (s *MySQLTestSuite) TestLastSeen(t *C) {
 	report1.StartOffset = 2000
 	report1.EndOffset = 3000
 
-	err = qanHandler.Write(report1)
+	err = qanHandler.Write(proto.Instance{}, report1, nil)
 	t.Assert(err, IsNil)
 
 	// first_seen should be updated to the new interval.StartTs (because there's
@@ -317,7 +318,7 @@ func (s *MySQLTestSuite) TestBadFingerprints(t *C) {
 	qanHandler := qan.NewMySQLMetricWriter(db.DBManager, s.ih, s.m, s.nullStats)
 
 	// Write metrics first time to set last seen.
-	err = qanHandler.Write(report)
+	err = qanHandler.Write(proto.Instance{}, report, nil)
 	t.Assert(err, IsNil)
 
 	var fingerprint string
@@ -345,7 +346,7 @@ func (s *MySQLTestSuite) TestWorkaroundPSBug830286(t *C) {
 
 	qanHandler := qan.NewMySQLMetricWriter(db.DBManager, s.ih, s.m, s.nullStats)
 
-	err = qanHandler.Write(report)
+	err = qanHandler.Write(proto.Instance{}, report, nil)
 	t.Assert(err, IsNil)
 
 	// @todo Below code is dead. Not sure what it ought to test.
@@ -378,7 +379,7 @@ func (s *MySQLTestSuite) TestRateLimit(t *C) {
 
 	qanHandler := qan.NewMySQLMetricWriter(db.DBManager, s.ih, s.m, s.nullStats)
 
-	err = qanHandler.Write(report1)
+	err = qanHandler.Write(proto.Instance{}, report1, nil)
 	t.Assert(err, IsNil)
 
 	if diff := test.TableDiff(s.testDb.DB(), "query_global_metrics", "query_global_metrics_id", config.TestDir+"/qan/001/query_global_metrics_3.tab"); diff != "" {
@@ -407,7 +408,7 @@ func (s *MySQLTestSuite) TestRateLimit(t *C) {
 	report2.EndOffset = 1000
 
 	// Write metrics and check results
-	err = qanHandler.Write(report2)
+	err = qanHandler.Write(proto.Instance{}, report2, nil)
 	t.Assert(err, IsNil)
 
 	if diff := test.TableDiff(s.testDb.DB(), "query_global_metrics", "query_global_metrics_id", config.TestDir+"/qan/001/query_global_metrics_4.tab"); diff != "" {
@@ -435,7 +436,7 @@ func (s *MySQLTestSuite) TestRateLimit(t *C) {
 	report3.EndOffset = 1000
 
 	// Write metrics and check results
-	err = qanHandler.Write(report3)
+	err = qanHandler.Write(proto.Instance{}, report3, nil)
 	t.Assert(err, IsNil)
 
 	if diff := test.TableDiff(s.testDb.DB(), "query_global_metrics", "query_global_metrics_id", config.TestDir+"/qan/001/query_global_metrics_5.tab"); diff != "" {

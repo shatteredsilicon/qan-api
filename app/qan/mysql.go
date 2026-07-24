@@ -34,6 +34,7 @@ import (
 	"github.com/shatteredsilicon/qan-api/service/query"
 	"github.com/shatteredsilicon/qan-api/stats"
 	"github.com/shatteredsilicon/ssm/proto"
+	qanConfig "github.com/shatteredsilicon/ssm/proto/config"
 	"github.com/shatteredsilicon/ssm/proto/metrics"
 	"github.com/shatteredsilicon/ssm/proto/qan"
 	qp "github.com/shatteredsilicon/ssm/proto/qan"
@@ -79,13 +80,10 @@ func NewMySQLMetricWriter(
 	return h
 }
 
-func (h *MySQLMetricWriter) Write(report qp.Report) error {
+func (h *MySQLMetricWriter) Write(inst proto.Instance, report qp.Report, config *qanConfig.QAN) error {
 	var err error
 
-	instanceId, in, err := h.ih.Get(report.UUID)
-	if err != nil {
-		return fmt.Errorf("cannot get instance of %s: %s", report.UUID, err)
-	}
+	instanceId, in := inst.Id, &inst
 
 	if report.Global == nil || report.Global.Metrics == nil {
 		return shared.ErrNoMetric
@@ -106,7 +104,7 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 	h.stats.SetComponent("db")
 	t := time.Now()
 
-	handleClass := func(id uint, class *qp.Class, lastSeen string) (uint, int64, int64, error) {
+	handleClass := func(id uint, class *qp.Class, period, lastSeen string) (uint, int64, int64, error) {
 		if id == 0 {
 			// New class, create it.
 			id, err = h.newClass(instanceId, in.Subsystem, class, lastSeen)
@@ -122,19 +120,17 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 		// present, so "class.Example.Query != """ filters out empty examples.
 		var lastExampleId, exampleRowsAffected int64
 		if class.Example != nil && class.Example.Query != "" {
-			if lastExampleId, exampleRowsAffected, err = h.updateQueryExample(instanceId, class, id, lastSeen); err != nil {
+			if lastExampleId, exampleRowsAffected, err = h.updateQueryExample(instanceId, class, id, period, lastSeen); err != nil {
 				revel.AppLog.Warnf("cannot update query example: %s: %#v: %s", err, class, trace)
 			}
 
 			if class.Example.Explain != "" { // update explain indexes if example changed
 				var explainResult proto.ExplainResult
-				if examplePeriod, err := time.Parse(shared.MYSQL_DATETIME_LAYOUT, lastSeen); err != nil {
-					revel.AppLog.Warnf("cannot parse example period time string '%s': %s", lastSeen, err)
-				} else if examplePeriod, err = examplePeriod.Truncate(24*time.Hour), json.Unmarshal([]byte(class.Example.Explain), &explainResult); err != nil {
+				if json.Unmarshal([]byte(class.Example.Explain), &explainResult); err != nil {
 					revel.AppLog.Warnf("cannot unmarshal explain data: %s", err.Error())
 				} else if indexes, err := ExtractIndexesFromExplain(in.Subsystem, class.Example.Db, explainResult); err != nil {
 					revel.AppLog.Warnf("cannot extract indexes from explain for instance %s: %s", in.Name, err.Error())
-				} else if existingIndexes, err := h.selectQueryExplainIndexes(instanceId, id, examplePeriod); err != nil { // fetch existing index records first
+				} else if existingIndexes, err := h.selectQueryExplainIndexes(instanceId, id, lastSeen); err != nil { // fetch existing index records first
 					revel.AppLog.Warnf("cannot select query explain indexes: %s", err)
 				} else {
 					var insertIndexes [][4]string
@@ -169,7 +165,7 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 					}
 
 					for _, index := range insertIndexes {
-						if err := h.insertQueryExplainIndexes(instanceId, id, examplePeriod, index[0], index[1], index[2], index[3]); err != nil {
+						if err := h.insertQueryExplainIndexes(instanceId, id, lastSeen, index[0], index[1], index[2], index[3]); err != nil {
 							revel.AppLog.Warnf("cannot insert query explain index '%+v': %s", index, err)
 							continue
 						}
@@ -211,6 +207,21 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 			}
 		}
 
+		periodT, err := time.Parse(shared.MYSQL_DATETIME_LAYOUT, lastSeen)
+		if err != nil {
+			revel.AppLog.Warnf("cannot parse time string '%s': %s", lastSeen, err.Error())
+			continue
+		} else {
+			if config != nil && config.ExampleResolution == qanConfig.TypeExampleResolutionHour {
+				periodT = time.Date(periodT.Year(), periodT.Month(), periodT.Day(), periodT.Hour(), 0, 0, 0, time.UTC)
+			} else if config != nil && config.ExampleResolution == qanConfig.TypeExampleResolutionMinute {
+				periodT = time.Date(periodT.Year(), periodT.Month(), periodT.Day(), periodT.Hour(), periodT.Minute(), 0, 0, time.UTC)
+			} else {
+				periodT = time.Date(periodT.Year(), periodT.Month(), periodT.Day(), 0, 0, 0, 0, time.UTC)
+			}
+		}
+		period := periodT.UTC().Format(shared.MYSQL_DATETIME_LAYOUT)
+
 		id, err := h.getClassId(class.Id)
 		if err != nil && err != sql.ErrNoRows {
 			revel.AppLog.Warnf("cannot get query class ID, skipping: %s: %#v: %s", err, class, trace)
@@ -220,7 +231,7 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 		classExists := id != 0
 		var lastExampleId, exampleRowsAffected int64
 
-		id, lastExampleId, exampleRowsAffected, err = handleClass(id, class, lastSeen)
+		id, lastExampleId, exampleRowsAffected, err = handleClass(id, class, period, lastSeen)
 		if err != nil {
 			continue
 		}
@@ -251,7 +262,7 @@ func (h *MySQLMetricWriter) Write(report qp.Report) error {
 			// by another process (most likely the auto-purge process), we re-create
 			// it in this case
 			if err == shared.ErrNotFound {
-				id, _, _, err = handleClass(0, class, lastSeen)
+				id, _, _, err = handleClass(0, class, period, lastSeen)
 				if err != nil {
 					continue
 				}
@@ -495,13 +506,13 @@ func (h *MySQLMetricWriter) updateQueryClassWithoutTP(queryClassId uint, lastSee
 	return mysql.Error(err, "updateQueryClassWithoutTP UPDATE query_classes")
 }
 
-func (h *MySQLMetricWriter) updateQueryExample(instanceId uint, class *qan.Class, classId uint, lastSeen string) (int64, int64, error) {
+func (h *MySQLMetricWriter) updateQueryExample(instanceId uint, class *qan.Class, classId uint, period, ts string) (int64, int64, error) {
 	var lastInsertId, rowsAffected int64
 
 	// INSERT ON DUPLICATE KEY UPDATE
 	t := time.Now()
 	metadata, _ := json.Marshal(class.Example.Metadata)
-	res, err := h.stmtInsertQueryExample.Exec(instanceId, classId, lastSeen, lastSeen, class.Example.Db, class.Example.QueryTime, class.Example.Query, class.Example.Explain, metadata)
+	res, err := h.stmtInsertQueryExample.Exec(instanceId, classId, period, ts, class.Example.Db, class.Example.QueryTime, class.Example.Query, class.Example.Explain, metadata)
 	if err == nil {
 		lastInsertId, _ = res.LastInsertId()
 		rowsAffected, _ = res.RowsAffected()
@@ -519,8 +530,8 @@ func (h *MySQLMetricWriter) insertUserSource(classID, instanceID uint, source qp
 	return err
 }
 
-func (h *MySQLMetricWriter) insertQueryExplainIndexes(instanceID, classID uint, examplePeriod time.Time, catalog, schema, table, index string) error {
-	_, err := h.stmtInsertQueryExplainIndexes.Exec(instanceID, classID, examplePeriod.UTC().Format(shared.MYSQL_DATETIME_LAYOUT), catalog, schema, table, index)
+func (h *MySQLMetricWriter) insertQueryExplainIndexes(instanceID, classID uint, examplePeriod string, catalog, schema, table, index string) error {
+	_, err := h.stmtInsertQueryExplainIndexes.Exec(instanceID, classID, examplePeriod, catalog, schema, table, index)
 	return err
 }
 
@@ -535,10 +546,10 @@ type queryExplainIndex struct {
 	IndexName     string
 }
 
-func (h *MySQLMetricWriter) selectQueryExplainIndexes(instanceID, classID uint, examplePeriod time.Time) ([]queryExplainIndex, error) {
+func (h *MySQLMetricWriter) selectQueryExplainIndexes(instanceID, classID uint, examplePeriod string) ([]queryExplainIndex, error) {
 	var indexes []queryExplainIndex
 
-	rows, err := h.stmtSelectQueryExplainIndexes.Query(instanceID, classID, examplePeriod.UTC().Format(shared.MYSQL_DATETIME_LAYOUT))
+	rows, err := h.stmtSelectQueryExplainIndexes.Query(instanceID, classID, examplePeriod)
 	if err != nil {
 		return nil, err
 	}
@@ -685,7 +696,7 @@ func (h *MySQLMetricWriter) prepareStatements() {
 	h.stmtInsertQueryExample, err = h.dbm.DB().Prepare(
 		"INSERT INTO query_examples" +
 			" (instance_id, query_class_id, period, ts, db, Query_time, query, `explain`, metadata)" +
-			" VALUES (?, ?, DATE(?), ?, ?, ?, ?, ?, ?)" +
+			" VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)" +
 			" ON DUPLICATE KEY UPDATE" +
 			" query=VALUES(query)," +
 			" ts=VALUES(ts)," +
