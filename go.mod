@@ -1,6 +1,6 @@
 module github.com/shatteredsilicon/qan-api
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/agtorre/gocolorize v1.0.0
@@ -18,8 +18,8 @@ require (
 	github.com/revel/revel v1.1.0
 	github.com/shatteredsilicon/ssm v0.0.0-20250716161023-a4554c8f2a4c
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/net v0.55.0
-	golang.org/x/tools v0.42.0
+	golang.org/x/net v0.57.0
+	golang.org/x/tools v0.47.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	vitess.io/vitess v0.23.3
 )
@@ -43,11 +43,11 @@ require (
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/xeonx/timeago v1.0.0-rc4 // indirect
-	golang.org/x/mod v0.33.0 // indirect
-	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.45.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260319201613-d00831a3d3e7 // indirect
-	google.golang.org/grpc v1.79.3 // indirect
+	golang.org/x/mod v0.37.0 // indirect
+	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260807164820-c8921c73eeea // indirect
+	google.golang.org/grpc v1.83.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/stack.v0 v0.0.0-20141108040640-9b43fcefddd0 // indirect
