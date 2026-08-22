@@ -88,7 +88,7 @@ func (c QAN) QueryReport(queryId string) revel.Result {
 	c.Params.Bind(&endTs, "end")
 
 	begin, end, err := shared.ValidateTimeRange(beginTs, endTs)
-	if err != nil {
+	if err != nil || end.Sub(begin).Minutes() < 1 {
 		return c.BadRequest(err, "invalid time range")
 	}
 
