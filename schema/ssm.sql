@@ -433,3 +433,11 @@ CREATE TABLE IF NOT EXISTS query_user_sources (
   count           INT UNSIGNED NOT NULL,
   PRIMARY KEY (query_class_id, instance_id, user_class_id, ts)
 );
+
+CREATE TABLE IF NOT EXISTS tool_reports (
+  instance_id INT UNSIGNED NOT NULL,
+  ts          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `type`      VARCHAR(100) CHARSET 'utf8' NOT NULL,
+  payload     LONGTEXT DEFAULT NULL,
+  PRIMARY KEY (instance_id, ts, `type`)
+);
