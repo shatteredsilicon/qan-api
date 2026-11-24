@@ -2,6 +2,7 @@ package models
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"strconv"
@@ -10,6 +11,8 @@ import (
 	"time"
 
 	"github.com/shatteredsilicon/qan-api/app/db/mysql"
+	"github.com/shatteredsilicon/ssm/proto"
+	queryProto "github.com/shatteredsilicon/ssm/proto/query"
 )
 
 // query provide methods to works with query
@@ -39,7 +42,11 @@ const summaryQueriesTemplate = `
 		qc.abstract AS abstract,
 		qc.fingerprint AS fingerprint,
 		qc.first_seen AS first_seen,
-		qe.query AS example,
+		COALESCE(tables, '') AS tables,
+		COALESCE(procedures, '') AS procedures,
+		COALESCE(qe.db, '') AS db,
+		COALESCE(qe.query, '') AS example,
+		` + "COALESCE(qe.`explain`, '') AS `explain`," + `
 		GROUP_CONCAT(DISTINCT(qcm.instance_id)) AS instance_ids
 	FROM query_class_metrics AS qcm
 	JOIN query_classes AS qc ON qcm.query_class_id = qc.query_class_id
@@ -53,23 +60,29 @@ const summaryQueriesTemplate = `
 `
 
 type SummaryQuery struct {
-	QueryClassID   uint      `db:"query_class_id" json:"-"`
-	Checksum       string    `db:"checksum" json:"checksum"`
-	Abstract       string    `db:"abstract" json:"abstract"`
-	Fingerprint    string    `db:"fingerprint" json:"fingerprint"`
-	FirstSeen      time.Time `db:"first_seen" json:"-"`
-	InstanceIDsStr string    `db:"instance_ids" json:"-"`
-	InstanceIDs    []uint    `db:"-" json:"instance_ids"`
-	QueryCnt       uint64    `db:"query_count" json:"query_count"`
-	Percentage     float64   `db:"-" json:"percentage"`
-	Load           float64   `db:"-" json:"load"`
-	Example        string    `db:"example" json:"example"`
-	QueryTimeSum   float64   `db:"query_time_sum" json:"query_time_sum"`
-	QueryTimeMin   float64   `db:"query_time_min" json:"query_time_min"`
-	QueryTimeAvg   float64   `db:"query_time_avg" json:"query_time_avg"`
-	QueryTimeMed   float64   `db:"query_time_med" json:"query_time_med"`
-	QueryTimeP95   float64   `db:"query_time_p95" json:"query_time_p95"`
-	QueryTimeMax   float64   `db:"query_time_max" json:"query_time_max"`
+	QueryClassID   uint                   `db:"query_class_id" json:"-"`
+	Checksum       string                 `db:"checksum" json:"checksum"`
+	Abstract       string                 `db:"abstract" json:"abstract"`
+	Fingerprint    string                 `db:"fingerprint" json:"fingerprint"`
+	FirstSeen      time.Time              `db:"first_seen" json:"-"`
+	TablesJSON     string                 `db:"tables" json:"-"`
+	Tables         []proto.Table          `db:"-" json:"tables"`
+	ProceduresJSON string                 `db:"procedures" json:"-"`
+	Procedures     []queryProto.Procedure `db:"-" json:"procedures"`
+	InstanceIDsStr string                 `db:"instance_ids" json:"-"`
+	InstanceIDs    []uint                 `db:"-" json:"instance_ids"`
+	QueryCnt       uint64                 `db:"query_count" json:"query_count"`
+	Percentage     float64                `db:"-" json:"percentage"`
+	Load           float64                `db:"-" json:"load"`
+	Example        string                 `db:"example" json:"example"`
+	DB             string                 `db:"db" json:"db"`
+	Explain        string                 `db:"explain" json:"explain"`
+	QueryTimeSum   float64                `db:"query_time_sum" json:"query_time_sum"`
+	QueryTimeMin   float64                `db:"query_time_min" json:"query_time_min"`
+	QueryTimeAvg   float64                `db:"query_time_avg" json:"query_time_avg"`
+	QueryTimeMed   float64                `db:"query_time_med" json:"query_time_med"`
+	QueryTimeP95   float64                `db:"query_time_p95" json:"query_time_p95"`
+	QueryTimeMax   float64                `db:"query_time_max" json:"query_time_max"`
 }
 
 func (query) SummaryQueries(instanceIDs []uint, begin, end time.Time, load float64) ([]SummaryQuery, error) {
@@ -147,6 +160,13 @@ func (query) SummaryQueries(instanceIDs []uint, begin, end time.Time, load float
 			ids = append(ids, uint(id))
 		}
 		queries[i].InstanceIDs = ids
+
+		if queries[i].TablesJSON != "" {
+			json.Unmarshal([]byte(queries[i].TablesJSON), &queries[i].Tables)
+		}
+		if queries[i].ProceduresJSON != "" {
+			json.Unmarshal([]byte(queries[i].ProceduresJSON), &queries[i].Procedures)
+		}
 	}
 
 	return queries, nil
